@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: backend_app
+    volumes:
+      - .:/var/www
+    depends_on:
+      - mysql
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: backend_nginx
+    ports:
+      - "8085:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+    networks:
+      - backend
+
+  mysql:
+    image: mysql:8.0
+    container_name: backend_mysql
+    environment:
+      MYSQL_DATABASE: backend
+      MYSQL_USER: backend
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - backend_mysql:/var/lib/mysql
+    networks:
+      - backend
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: backend_phpmyadmin
+    environment:
+      PMA_HOST: mysql
+    ports:
+      - "8086:80"
+    depends_on:
+      - mysql
+    networks:
+      - backend
+
+volumes:
+  backend_mysql:
+
+networks:
+  backend:
