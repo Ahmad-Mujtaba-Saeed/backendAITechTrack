@@ -14,5 +14,8 @@ class DatabaseSeeder extends Seeder
     {
         // Call the AccessControl module's seeder
         $this->call(\Modules\AccessControl\Database\Seeders\AccessControlDatabaseSeeder::class);
+        
+        // Call the Billing module's plan seeder
+        $this->call(\Modules\Billing\Database\Seeders\PlanSeeder::class);
     }
 }
