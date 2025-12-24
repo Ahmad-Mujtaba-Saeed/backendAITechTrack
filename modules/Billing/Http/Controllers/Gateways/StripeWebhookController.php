@@ -118,9 +118,7 @@ class StripeWebhookController extends Controller
                     : null;
                 
                 
-                try {
-
-                    $subscriptionModel = Subscription::updateOrCreate(
+                $subscriptionModel = Subscription::updateOrCreate(
                         [
                             'user_id' => $user->id,
                             'sub_id'  => $subscription->id,
@@ -137,38 +135,6 @@ class StripeWebhookController extends Controller
                             'status'        => $subscription->status,
                         ]
                     );
-
-                    return response()->json([
-                        'message'      => 'Subscription saved successfully',
-                        'subscription' => $subscriptionModel,
-                    ], 200);
-
-                } catch (ApiErrorException $e) {
-
-                    // Stripe-specific failure
-                    Log::error('Stripe subscription error', [
-                        'user_id' => $user->id,
-                        'error'   => $e->getMessage(),
-                    ]);
-
-                    return response()->json([
-                        'message' => 'Payment processor error occurred',
-                        'error'   => $e->getMessage(),
-                    ], 502);
-
-                } catch (\Throwable $e) {
-
-                    // Database / logic / unknown failure
-                    Log::error('Subscription persistence failed', [
-                        'user_id' => $user->id,
-                        'error'   => $e->getMessage(),
-                    ]);
-
-                    return response()->json([
-                        'message' => 'Failed to create subscription',
-                        'error'   => $e->getMessage(),
-                    ], 500);
-                }
 
                 
                     // Mark in user's record that they've used trial
