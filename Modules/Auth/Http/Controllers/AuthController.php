@@ -10,6 +10,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\Customer;
+use Modules\AccessControl\Models\Role;
 
 
 
@@ -53,6 +54,13 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'stripe_customer_id' => $stripeCustomer ? $stripeCustomer->id : null,
         ]);
+
+        $userRole = Role::where('slug', 'user')->first();
+
+        // Assign user role
+        $user->roles()->sync([$userRole->id]);
+
+       
 
 
         return response()->json([

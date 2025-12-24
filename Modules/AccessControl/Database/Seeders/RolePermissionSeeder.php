@@ -12,6 +12,7 @@ class RolePermissionSeeder extends Seeder
     {
         // Create permissions
         $permissions = [
+            'base-user',
             'view-dashboard',
             'manage-users',
             'manage-roles',
@@ -32,6 +33,17 @@ class RolePermissionSeeder extends Seeder
             'name' => 'Admin',
             'slug' => 'admin',
             'description' => 'Administrator with all permissions'
+        ]);
+
+        // Create user role
+        $userRole = Role::firstOrCreate([
+            'name' => 'User',
+            'slug' => 'user',
+            'description' => 'User with different permissions'
+        ]);
+
+        $userRole->permissions()->sync([
+            Permission::where('slug', 'base-user')->first()->id,
         ]);
 
         // Assign all permissions to admin role
