@@ -14,6 +14,7 @@ use Modules\Billing\Models\Plan;
 // use App\Mail\SubscriptionWelcomeMail;
 // use App\Mail\SubscriptionCancelledMail;
 // use Illuminate\Support\Facades\Mail;
+use Stripe\Exception\ApiErrorException;
 use Exception;
 
 
@@ -117,23 +118,57 @@ class StripeWebhookController extends Controller
                     : null;
                 
                 
-                    Subscription::updateOrCreate(
+                try {
+
+                    $subscriptionModel = Subscription::updateOrCreate(
                         [
                             'user_id' => $user->id,
-                            'sub_id' => $subscription->id,
+                            'sub_id'  => $subscription->id,
                         ],
                         [
-                            'name' => $plan->title,
-                            'type' => 'membership',
-                            'type_id' => $plan->id,
-                            'payment_id' => $payment->id,
-                            'cus_id' => $customerId,
+                            'name'          => $plan->title,
+                            'type'          => 'membership',
+                            'type_id'       => $plan->id,
+                            'payment_id'    => $payment->id,
+                            'cus_id'        => $customerId,
                             'trial_ends_at' => $trialEndsAt,
-                            'ends_at' => $subscriptionEndsAt,
-                            'starts_at' => $subscriptionStartsAt,
-                            'status' => $subscription->status
+                            'starts_at'     => $subscriptionStartsAt,
+                            'ends_at'       => $subscriptionEndsAt,
+                            'status'        => $subscription->status,
                         ]
                     );
+
+                    return response()->json([
+                        'message'      => 'Subscription saved successfully',
+                        'subscription' => $subscriptionModel,
+                    ], 200);
+
+                } catch (ApiErrorException $e) {
+
+                    // Stripe-specific failure
+                    Log::error('Stripe subscription error', [
+                        'user_id' => $user->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Payment processor error occurred',
+                        'error'   => $e->getMessage(),
+                    ], 502);
+
+                } catch (\Throwable $e) {
+
+                    // Database / logic / unknown failure
+                    Log::error('Subscription persistence failed', [
+                        'user_id' => $user->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Failed to create subscription',
+                        'error'   => $e->getMessage(),
+                    ], 500);
+                }
 
                 
                     // Mark in user's record that they've used trial
