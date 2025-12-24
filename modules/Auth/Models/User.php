@@ -33,7 +33,7 @@ class User extends Authenticatable implements Auditable
         'trial_used_at',
     ];
 
-    protected $appends = ['profile_img_url'];
+    protected $appends = ['profile_img_url','plan_id'];
 
     public function getProfileImgUrlAttribute()
     {
@@ -45,5 +45,10 @@ class User extends Authenticatable implements Auditable
             'url' => url(Storage::url($this->profile_img)),
             'path' => $this->profile_img
         ];
+    }
+
+    public function getPlanIdAttribute()
+    {
+        return $this->subscriptions()->where('status', 'active')->first()->plan_id;
     }
 }
