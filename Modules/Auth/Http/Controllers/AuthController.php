@@ -3,12 +3,14 @@
 namespace Modules\Auth\Http\Controllers;
 
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Modules\Auth\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\Customer;
+
 
 
 
@@ -24,7 +26,8 @@ class AuthController extends Controller
         ]);
 
 
-        Stripe::setApiKey(env('STRIPE_SECRET'));
+        Stripe::setApiKey(config('services.stripe.secret'));
+
         $stripeCustomer = null;
         
         try {
