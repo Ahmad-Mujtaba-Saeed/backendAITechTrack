@@ -155,8 +155,8 @@ public function createSubscriptionSession(Request $request, $planId)
         ]],
         'allow_promotion_codes' => true,
         'subscription_data' => $subscriptionData,
-        'success_url' => 'https://portal.mypathfinder.uk/welcome?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => 'https://portal.mypathfinder.uk/',
+        'success_url' => 'https://slateblue-snake-907020.hostingersite.com/welcome?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => 'https://slateblue-snake-907020.hostingersite.com/',
     ]);
 
     return response()->json([
