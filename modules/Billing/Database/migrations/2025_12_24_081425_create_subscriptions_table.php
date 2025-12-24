@@ -10,25 +10,36 @@ return new class extends Migration
     {
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('payment_id')->nullable();
             $table->string('name');
-            $table->foreignId('payment_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('type')->nullable();
-            $table->unsignedBigInteger('type_id')->nullable();
+            $table->string('type');
+            $table->string('type_id');
             $table->string('sub_id')->nullable();
             $table->string('cus_id')->nullable();
             $table->string('status');
+            $table->boolean('cancel_at_period_end')->default(false);
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->timestamp('starts_at')->nullable();
-            $table->boolean('cancel_at_period_end')->default(false);
             $table->timestamps();
-            $table->softDeletes();
-            
-            $table->index(['type', 'type_id']);
-            $table->index('sub_id');
-            $table->index('status');
-            $table->index('ends_at');
+
+            // Add indexes
+            $table->index('user_id');
+            $table->index('payment_id');
+        });
+
+        // Add foreign key constraints
+        Schema::table('subscriptions', function (Blueprint $table) {
+            $table->foreign('user_id')
+                  ->references('id')
+                  ->on('users')
+                  ->onDelete('cascade');
+
+            $table->foreign('payment_id')
+                  ->references('id')
+                  ->on('payments')
+                  ->onDelete('set null');
         });
     }
 
