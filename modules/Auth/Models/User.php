@@ -20,13 +20,17 @@ class User extends Authenticatable implements Auditable
         'phone',
         'stripe_customer_id',
         'firebase_uid',
-        'profile_img'
+        'profile_img',
+        'trial_used',
+        'trial_used_at',
     ];
 
     protected $hidden = [
         'password',
         'stripe_customer_id',
         'remember_token',
+        'trial_used',
+        'trial_used_at',
     ];
 
     protected $appends = ['profile_img_url'];
