@@ -19,7 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Log::info('AppServiceProvider booting...');
         ModuleManager::load();
-        //
+        \Log::info('ModuleManager loaded');
+        \Log::info('Registered providers:', app()->getLoadedProviders());
     }
 }
