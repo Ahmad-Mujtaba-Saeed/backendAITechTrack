@@ -136,8 +136,7 @@ class StripeWebhookController extends Controller
                     );
 
                 
-                    $user->plan_id = $plan->id;
-                            // Mark in user's record that they've used trial
+                    // Mark in user's record that they've used trial
                     $user->trial_used = true;
                     $user->trial_used_at = now();
                     $user->save();
