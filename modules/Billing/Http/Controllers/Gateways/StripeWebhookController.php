@@ -126,7 +126,7 @@ class StripeWebhookController extends Controller
                             'sub_id'  => $subscription->id,
                         ],
                         [
-                            'name'          => $plan->title,
+                            'name'          => $plan->name,
                             'type'          => 'membership',
                             'type_id'       => $plan->id,
                             'payment_id'    => $payment->id,
@@ -247,7 +247,7 @@ class StripeWebhookController extends Controller
                         'user_id' => $user->id,
                         'sub_id' => $subscription->id,
                     ],[
-                        'name' => $plan->title,
+                        'name' => $plan->name,
                     'type' => 'membership',
                     'type_id' => $plan->id,
                     'payment_id' => $payment->id,
