@@ -225,7 +225,7 @@ class StripeWebhookController extends Controller
                 
     
     
-                    $user->plan_id = $plan->id;
+
                     $user->save();
                     \DB::commit();
                     
@@ -275,12 +275,8 @@ class StripeWebhookController extends Controller
                             ->where('sub_id', $session->id)
                             ->latest()
                             ->first();
-    
-                        if($user){
-                            $user->plan_id = null;
-                            $user->save();
-                        }
-                    
+
+
                         if ($localSubscription) {
                             $localSubscription->status = 'cancelled';
                             $localSubscription->ends_at = now();
