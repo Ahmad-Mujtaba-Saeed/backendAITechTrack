@@ -54,7 +54,7 @@ class User extends Authenticatable implements Auditable
 
     public function getPlanIdAttribute()
     {
-        return $this->subscription()->where('status', 'active')->orWhere('status', 'trialing')->first()->type_id ?? null;
+        return (int) ($this->subscription()->where('status', 'active')->orWhere('status', 'trialing')->first()->type_id ?? null);
     }
 
     public function subscription()
