@@ -11,6 +11,11 @@ use Illuminate\Http\Request;
 
 class PlanController extends Controller
 {
+    public function activePlans()
+    {
+        return Plan::where('is_active', true)->get();
+    }
+    
     public function index()
     {
         return Plan::latest()->get();

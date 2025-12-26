@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\Controllers\Gateways\StripeController;
 use Modules\Billing\Http\Controllers\Gateways\StripeWebhookController;
 // Include admin routes
-require __DIR__ . '/admin.php';
+require __DIR__ . '/plans.php';
 
 
 Route::middleware(['auth:sanctum'])->prefix('/billing')

@@ -11,3 +11,5 @@ Route::middleware(['auth:sanctum', 'permission:manage-plans'])
         Route::put('/plans/{plan}', [PlanController::class, 'update']);
         Route::delete('/plans/{plan}', [PlanController::class, 'destroy']);
 });
+
+Route::get('/billing/plans', [PlanController::class, 'activePlans']);
