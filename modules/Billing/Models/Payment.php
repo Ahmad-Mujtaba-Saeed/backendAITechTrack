@@ -4,7 +4,7 @@ namespace Modules\Billing\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Modules\Auth\Models\User;
+use Modules\User\Models\User;
 use Modules\Billing\Models\Plan;
 use OwenIt\Auditing\Contracts\Auditable;
 

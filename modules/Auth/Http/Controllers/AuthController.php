@@ -4,7 +4,7 @@ namespace Modules\Auth\Http\Controllers;
 
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Modules\Auth\Models\User;
+use Modules\User\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;

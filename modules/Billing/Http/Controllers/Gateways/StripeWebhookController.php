@@ -5,7 +5,7 @@ namespace Modules\Billing\Http\Controllers\Gateways;
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Modules\Auth\Models\User;
+use Modules\User\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Modules\Billing\Models\Subscription;
