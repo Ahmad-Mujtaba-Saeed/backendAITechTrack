@@ -55,6 +55,23 @@ docker compose exec app bash
 docker exec -it backend_app bash
 ```
 
+## Database Configuration
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=backend
+DB_USERNAME=backend
+DB_PASSWORD=secret
+```
+
+## Access URLs
+
+- **Backend URL:** http://localhost:8085
+- **Database Admin (phpMyAdmin):** http://localhost:8086/index.php
+
+
 ## Local Development (Without Docker)
 
 ### Start local server
@@ -76,21 +93,6 @@ php artisan db:seed
 
 Enable or disable modules by editing the `module.json` file in each module's directory.
 
-## Database Configuration
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=mysql
-DB_PORT=3306
-DB_DATABASE=backend
-DB_USERNAME=backend
-DB_PASSWORD=secret
-```
-
-## Access URLs
-
-- **Backend URL:** http://localhost:8085
-- **Database Admin (phpMyAdmin):** http://localhost:8086/index.php
 
 ## License
 
