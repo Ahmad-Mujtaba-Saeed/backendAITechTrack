@@ -13,6 +13,7 @@ Route::middleware(['auth:sanctum'])->prefix('/resume')
     Route::put('/{id}', [ResumeController::class, 'update']);
     Route::delete('/{id}', [ResumeController::class, 'delete']);
 
-    Route::get('/{id}/download-doc', [ResumeController::class, 'downloadDoc']);
     Route::get('/{id}/download', [ResumeController::class, 'download']);
 });
+
+Route::get('/resume/{id}/download-doc', [ResumeController::class, 'downloadDoc']);
