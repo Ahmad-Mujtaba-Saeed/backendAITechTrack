@@ -18,7 +18,6 @@ Route::get('/migrate', function () {
     return "Migrate Complete!";
 });
 
-Route::get('/static-file-runner-v1', [ResumeController::class, 'staticFileRunner']);
 
 Route::get('/seed', function () {
     \Illuminate\Support\Facades\Artisan::call('db:seed');
