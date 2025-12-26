@@ -1346,7 +1346,7 @@ class ResumeController extends Controller
 
             // 4. Pass it to Blade template
             $pdf = Pdf::loadView(
-                'resume::pdfs.' . $template . '-template',
+                'Resume::pdfs.' . $template . '-template',
                 compact('resumeData')
             )->setPaper('a4', 'portrait');
 

@@ -3,10 +3,12 @@
 namespace Modules\Resume;
 
 use App\Core\BaseModuleServiceProvider;
+use Illuminate\Support\Facades\File;
 
 class ModuleServiceProvider extends BaseModuleServiceProvider
 {
     protected string $moduleName = 'Resume';
+    protected string $moduleNameLower = 'resume';
 
     public function __construct($app)
     {
@@ -18,16 +20,20 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
     {
         parent::boot();
         
-        // Create views directory if it doesn't exist
-        $viewsPath = $this->modulePath . '/Resources/views';
-        if (!is_dir($viewsPath)) {
-            mkdir($viewsPath, 0755, true);
-        }
-        
-        $this->loadViewsFrom(
-            $viewsPath,
-            'resume'
-        );
+        $this->registerViews();
     }
 
+    protected function registerViews()
+    {
+        $viewsPath = $this->modulePath . '/Resources/views';
+        
+        // Create views directory if it doesn't exist
+        if (!File::isDirectory($viewsPath)) {
+            File::makeDirectory($viewsPath, 0755, true);
+        }
+
+        // Register views with both module name and module name in lowercase
+        $this->loadViewsFrom($viewsPath, $this->moduleName);
+        $this->loadViewsFrom($viewsPath, $this->moduleNameLower);
+    }
 }
