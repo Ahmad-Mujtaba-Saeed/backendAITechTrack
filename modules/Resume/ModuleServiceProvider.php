@@ -26,14 +26,25 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
     protected function registerViews()
     {
         $viewsPath = $this->modulePath . '/Resources/views';
-        
-        // Create views directory if it doesn't exist
+        \Log::info('Registering views', [
+            'module' => $this->moduleName,
+            'path' => $viewsPath,
+            'exists' => is_dir($viewsPath) ? 'yes' : 'no'
+        ]);
+
         if (!File::isDirectory($viewsPath)) {
+            \Log::info('Creating views directory', ['path' => $viewsPath]);
             File::makeDirectory($viewsPath, 0755, true);
         }
 
-        // Register views with both module name and module name in lowercase
         $this->loadViewsFrom($viewsPath, $this->moduleName);
         $this->loadViewsFrom($viewsPath, $this->moduleNameLower);
+
+        \Log::info('Views registered', [
+            'namespaces' => [
+                $this->moduleName => $viewsPath,
+                $this->moduleNameLower => $viewsPath
+            ]
+        ]);
     }
 }
