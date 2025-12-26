@@ -35,7 +35,6 @@ class User extends Authenticatable implements Auditable
         'password',
         'stripe_customer_id',
         'remember_token',
-        'trial_used',
         'trial_used_at',
     ];
 
