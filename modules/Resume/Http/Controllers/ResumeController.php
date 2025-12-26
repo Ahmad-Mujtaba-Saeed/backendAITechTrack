@@ -266,18 +266,56 @@ class ResumeController extends Controller
                 ], 500);
             }
         } else {
-            // Handle PDF and images with Python script
-            $pythonPath = '/var/www/html/backend_cv_finder/env/bin/python';
-            $scriptPath = public_path('scripts/parse_resume.py');
-            $command = sprintf(
-                '%s %s "%s"',
-                escapeshellarg($pythonPath),
-                escapeshellarg($scriptPath),
-                str_replace('"', '\"', $path)
-            );
+            try {
+                // 1. Try to extract text directly from PDF
+                $parser = new Parser();
+                $pdf = $parser->parseFile($path);
+                $cleanOutput = trim($pdf->getText());
+                
+                $ocr_enabled = env('OCR_ENABLED', true);
+                
+                // 2. Fallback to OCR if text extraction fails or returns too little text
+                if ((empty($cleanOutput) || strlen($cleanOutput) < 100) && $ocr_enabled) {
+                    $pythonPath = env('PYTHON_PATH', '/var/www/html/backend_cv_finder/env/bin/python');
+                    $scriptPath = public_path('scripts/parse_resume.py');
+                    
+                    if (!file_exists($scriptPath)) {
+                        throw new \Exception('OCR script not found at: ' . $scriptPath);
+                    }
 
-            $output = shell_exec($command . ' 2>&1');
-            $cleanOutput = mb_convert_encoding(trim($output), 'UTF-8', 'UTF-8');
+                    $command = sprintf(
+                        '%s %s %s',
+                        escapeshellarg($pythonPath),
+                        escapeshellarg($scriptPath),
+                        escapeshellarg($path)
+                    );
+
+                    $output = shell_exec($command . ' 2>&1');
+                    
+                    if ($output === null) {
+                        throw new \Exception('Failed to execute OCR script');
+                    }
+                    
+                    $cleanOutput = mb_convert_encoding(trim($output), 'UTF-8', 'UTF-8');
+                    
+                    // If OCR also fails
+                    if (empty($cleanOutput)) {
+                        throw new \Exception('OCR processing returned no text');
+                    }
+                } elseif (empty($cleanOutput)) {
+                    throw new \Exception('Failed to extract text from PDF and OCR is disabled');
+                }
+            } catch (\Exception $e) {
+                \Log::error('Resume parsing error: ' . $e->getMessage(), [
+                    'file' => $path,
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                return response()->json([
+                    'error' => 'Failed to process resume',
+                    'details' => env('APP_DEBUG') ? $e->getMessage() : 'An error occurred while processing the resume'
+                ], 400);
+            }
         }
 
         try {

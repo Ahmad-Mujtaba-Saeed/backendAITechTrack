@@ -25,3 +25,8 @@ DB_PASSWORD=secret
 ----------------------------- for docker -------------------------------------------------------
 
 
+php artisan serve {for local server}
+php artisan migrate {for migration}
+php artisan db:seed {for seed}
+
+can enable or disbale a module through module.json file
