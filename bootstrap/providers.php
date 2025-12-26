@@ -7,4 +7,5 @@ return [
     \Modules\AccessControl\ModuleServiceProvider::class,
     \Modules\User\ModuleServiceProvider::class,
     \Modules\Resume\ModuleServiceProvider::class,
+    Barryvdh\DomPDF\ServiceProvider::class,
 ];
