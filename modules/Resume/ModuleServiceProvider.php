@@ -25,7 +25,7 @@ class ModuleServiceProvider extends BaseModuleServiceProvider
 
     protected function registerViews()
     {
-        $viewsPath = $this->modulePath . '/Resources/views';
+        $viewsPath = $this->modulePath . '/resources/views';
         \Log::info('Registering views', [
             'module' => $this->moduleName,
             'path' => $viewsPath,
