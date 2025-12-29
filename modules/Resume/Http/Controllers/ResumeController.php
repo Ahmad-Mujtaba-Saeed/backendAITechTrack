@@ -12,6 +12,7 @@ use Smalot\PdfParser\Parser;
 // use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 // use Modules\Resume\Models\GettingStartedStep;
 
 class ResumeController extends Controller
@@ -207,9 +208,11 @@ class ResumeController extends Controller
 
     public function parseResumeOCRPyScript(Request $request)
     {
+
         $request->validate([
             'file' => 'required|mimes:pdf,png,jpg,jpeg,docx'
         ]);
+        // return ("new - OCR script");
         $model = $request->model ?? 'gpt-4o-mini';
         $file = $request->file('file');
         $originalName = $file->getClientOriginalName();
@@ -266,56 +269,103 @@ class ResumeController extends Controller
                 ], 500);
             }
         } else {
-            try {
-                // 1. Try to extract text directly from PDF
-                $parser = new Parser();
-                $pdf = $parser->parseFile($path);
-                $cleanOutput = trim($pdf->getText());
-                
-                $ocr_enabled = env('OCR_ENABLED', true);
-                
-                // 2. Fallback to OCR if text extraction fails or returns too little text
-                if ((empty($cleanOutput) || strlen($cleanOutput) < 100) && $ocr_enabled) {
-                    $pythonPath = env('PYTHON_PATH', '/var/www/html/backend_cv_finder/env/bin/python');
-                    $scriptPath = public_path('scripts/parse_resume.py');
-                    
-                    if (!file_exists($scriptPath)) {
-                        throw new \Exception('OCR script not found at: ' . $scriptPath);
-                    }
+                try {
+                        /** -------------------------------
+                         *  1. Attempt native PDF parsing
+                         * -------------------------------- */
+                        $parser = new Parser();
+                        $pdf = $parser->parseFile($path);
+                        $cleanOutput = trim($pdf->getText());
 
-                    $command = sprintf(
-                        '%s %s %s',
-                        escapeshellarg($pythonPath),
-                        escapeshellarg($scriptPath),
-                        escapeshellarg($path)
-                    );
+                        Log::info('PDF text extraction attempt completed', [
+                            'text_length' => strlen($cleanOutput)
+                        ]);
 
-                    $output = shell_exec($command . ' 2>&1');
-                    
-                    if ($output === null) {
-                        throw new \Exception('Failed to execute OCR script');
+                        $ocrEnabled = filter_var(env('OCR_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+
+                        /** ------------------------------------------------
+                         *  2. Fallback to OCR if needed
+                         * ------------------------------------------------ */
+                        if ((empty($cleanOutput) || strlen($cleanOutput) < 100)) {
+
+                            if (!$ocrEnabled) {
+                                Log::warning('OCR disabled and PDF extraction insufficient', [
+                                    'text_length' => strlen($cleanOutput)
+                                ]);
+
+                                throw new \Exception('PDF text extraction failed and OCR is disabled');
+                            }
+
+                            Log::info('Falling back to OCR processing');
+
+                            $pythonPath = env('PYTHON_PATH', '/usr/bin/python3');
+                            $scriptPath = public_path('scripts/parse_resume.py');
+
+                            if (!file_exists($scriptPath)) {
+                                Log::error('OCR script not found', [
+                                    'script_path' => $scriptPath
+                                ]);
+                                throw new \Exception('OCR script not found');
+                            }
+
+                            if (!is_executable($pythonPath)) {
+                                Log::error('Python executable not found or not executable', [
+                                    'python_path' => $pythonPath
+                                ]);
+                                throw new \Exception('Invalid Python path');
+                            }
+
+                            $command = sprintf(
+                                '%s %s %s',
+                                escapeshellarg($pythonPath),
+                                escapeshellarg($scriptPath),
+                                escapeshellarg($path)
+                            );
+
+                            Log::debug('Executing OCR command', [
+                                'command' => $command
+                            ]);
+
+                            $output = shell_exec($command . ' 2>&1');
+
+                            if ($output === null) {
+                                Log::error('OCR execution failed (null output)');
+                                throw new \Exception('Failed to execute OCR script');
+                            }
+
+                            $cleanOutput = mb_convert_encoding(trim($output), 'UTF-8', 'UTF-8');
+
+                            Log::info('OCR processing completed', [
+                                'ocr_text_length' => strlen($cleanOutput)
+                            ]);
+
+                            if (empty($cleanOutput)) {
+                                Log::error('OCR returned empty output');
+                                throw new \Exception('OCR processing returned no text');
+                            }
+                        }
+
+                        Log::info('Resume parsing successful');
+
+                        // return response()->json([
+                        //     'success' => true,
+                        //     'text' => $cleanOutput
+                        // ]);
+
+                    } catch (\Throwable $e) {
+
+                        Log::error('Resume parsing failed', [
+                            'file' => $path,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Failed to process resume',
+                            'details' => env('APP_DEBUG') ? $e->getMessage() : null
+                        ], 400);
                     }
-                    
-                    $cleanOutput = mb_convert_encoding(trim($output), 'UTF-8', 'UTF-8');
-                    
-                    // If OCR also fails
-                    if (empty($cleanOutput)) {
-                        throw new \Exception('OCR processing returned no text');
-                    }
-                } elseif (empty($cleanOutput)) {
-                    throw new \Exception('Failed to extract text from PDF and OCR is disabled');
-                }
-            } catch (\Exception $e) {
-                \Log::error('Resume parsing error: ' . $e->getMessage(), [
-                    'file' => $path,
-                    'trace' => $e->getTraceAsString()
-                ]);
-                
-                return response()->json([
-                    'error' => 'Failed to process resume',
-                    'details' => env('APP_DEBUG') ? $e->getMessage() : 'An error occurred while processing the resume'
-                ], 400);
-            }
         }
 
         try {
@@ -562,16 +612,7 @@ class ResumeController extends Controller
                     $decoded = json_decode($jsonString, true);
 
                     if (json_last_error() === JSON_ERROR_NONE && isset($decoded['data'])) {
-                        $pdfParsed = new PdfParsed();
-                        $pdfParsed->ip_address = $request->ip();
-                        $pdfParsed->user_agent = $request->userAgent();
-                        if (isset($decoded['data']['candidateName'][0]['firstName'], $decoded['data']['candidateName'][0]['familyName'])) {
-                            $pdfParsed->full_name = $decoded['data']['candidateName'][0]['firstName'] . ' ' . $decoded['data']['candidateName'][0]['familyName'];
-                        }
-                        $pdfParsed->file_name = $originalName;
                         $decoded['data']['languageStyle'] = $style_adjective;
-                        $pdfParsed->parsed_data = $decoded;
-                        $pdfParsed->save();
 
                         return response()->json($decoded);
                     }

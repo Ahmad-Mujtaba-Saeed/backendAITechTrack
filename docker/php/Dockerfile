@@ -1,26 +1,60 @@
 FROM php:8.3-fpm
 
+# ===============================
 # System dependencies
+# ===============================
 RUN apt-get update && apt-get install -y \
-    git curl zip unzip \
-    libpng-dev libonig-dev libxml2-dev \
+    git \
+    curl \
+    zip \
+    unzip \
+    libzip-dev \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    python3 \
+    python3-pip \
+    tesseract-ocr \
+    poppler-utils \
     && docker-php-ext-install \
-    pdo_mysql mbstring bcmath gd \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+        pdo_mysql \
+        mbstring \
+        bcmath \
+        gd \
+        zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Composer 2.8.x
+
+# ===============================
+# Python OCR dependencies
+# ===============================
+RUN pip3 install --no-cache-dir --break-system-packages \
+    pytesseract \
+    pdf2image \
+    pillow
+
+# ===============================
+# Composer
+# ===============================
 COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy composer files first (layer cache)
+# ===============================
+# Composer dependencies (cached)
+# ===============================
 COPY composer.json composer.lock ./
 RUN composer install --prefer-dist --no-interaction --no-scripts
 
-# Copy application source
+# ===============================
+# Application source
+# ===============================
 COPY . .
 
-# Permissions for Laravel runtime
+# ===============================
+# Permissions
+# ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache
 
 CMD ["php-fpm"]
