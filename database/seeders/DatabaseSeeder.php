@@ -16,5 +16,8 @@ class DatabaseSeeder extends Seeder
         
         // Call the Billing module's plan seeder
         $this->call(\Modules\Billing\Database\Seeders\PlanSeeder::class);
+
+        // Call the core credentials seeder
+        $this->call(\Modules\Admin\Database\Seeders\CoreCredentialsTableSeeder::class);
     }
 }
