@@ -41,15 +41,52 @@ Route::get('/storage-link', function () {
 
 
 Route::get('/test-email', function () {
-    Mail::raw('This is a test email to verify SMTP credentials.', function ($message) {
-        $message->to('ahmadmujtabap70@gmail.com')
-                ->subject('SMTP Test Email');
-    });
+    \Log::info('Starting test email sending...');
+    
+    try {
+        $email = 'ahmadmujtabap70@gmail.com';
+        
+        \Log::info('Attempting to send email to: ' . $email);
+        \Log::info('Mail config:', [
+            'host' => config('mail.mailers.smtp.host'),
+            'port' => config('mail.mailers.smtp.port'),
+            'username' => config('mail.mailers.smtp.username'),
+            'encryption' => config('mail.mailers.smtp.encryption')
+        ]);
 
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Test email sent successfully.'
-    ]);
+        Mail::raw('This is a test email to verify SMTP credentials.', function ($message) use ($email) {
+            $message->to($email)
+                   ->subject('SMTP Test Email');
+        });
+
+        \Log::info('Email sent successfully');
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Test email sent successfully.',
+            'config' => [
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'username' => config('mail.mailers.smtp.username'),
+                'encryption' => config('mail.mailers.smtp.encryption')
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Failed to send test email: ' . $e->getMessage());
+        \Log::error($e->getTraceAsString());
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to send test email: ' . $e->getMessage(),
+            'config' => [
+                'host' => config('mail.mailers.smtp.host'),
+                'port' => config('mail.mailers.smtp.port'),
+                'username' => config('mail.mailers.smtp.username'),
+                'encryption' => config('mail.mailers.smtp.encryption')
+            ]
+        ], 500);
+    }
 });
 
 
