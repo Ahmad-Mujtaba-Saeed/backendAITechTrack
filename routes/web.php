@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -39,6 +40,17 @@ Route::get('/storage-link', function () {
 
 
 
+Route::get('/test-email', function () {
+    Mail::raw('This is a test email to verify SMTP credentials.', function ($message) {
+        $message->to('ahmadmujtabap70@gmail.com')
+                ->subject('SMTP Test Email');
+    });
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Test email sent successfully.'
+    ]);
+});
 
 
 Route::get('/logs', function () {
