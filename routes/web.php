@@ -50,6 +50,7 @@ Route::get('/test-email', function () {
         \Log::info('Mail config:', [
             'host' => config('mail.mailers.smtp.host'),
             'port' => config('mail.mailers.smtp.port'),
+            'password' => config('mail.mailers.smtp.password'),
             'username' => config('mail.mailers.smtp.username'),
             'encryption' => config('mail.mailers.smtp.encryption')
         ]);
@@ -67,6 +68,7 @@ Route::get('/test-email', function () {
             'config' => [
                 'host' => config('mail.mailers.smtp.host'),
                 'port' => config('mail.mailers.smtp.port'),
+                'password' => config('mail.mailers.smtp.password'),
                 'username' => config('mail.mailers.smtp.username'),
                 'encryption' => config('mail.mailers.smtp.encryption')
             ]
@@ -82,6 +84,7 @@ Route::get('/test-email', function () {
             'config' => [
                 'host' => config('mail.mailers.smtp.host'),
                 'port' => config('mail.mailers.smtp.port'),
+                'password' => config('mail.mailers.smtp.password'),
                 'username' => config('mail.mailers.smtp.username'),
                 'encryption' => config('mail.mailers.smtp.encryption')
             ]
