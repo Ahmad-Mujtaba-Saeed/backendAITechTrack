@@ -20,21 +20,26 @@ class DynamicMailConfigProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Check if the core_credentials table exists before trying to query it
+        if (!\Schema::hasTable('core_credentials')) {
+            return;
+        }
+
         $settings = CoreCredential::where('group', 'mail')
             ->get()
             ->mapWithKeys(function ($item) {
-                return [$item->key => $item->value]; // This will trigger the getValueAttribute accessor
-            });
+                return [$item->key => $item->value];
+            })
+            ->toArray();
 
         config([
-            'mail.mailers.smtp.host' => $settings['mail.host'] ?? null,
-            'mail.mailers.smtp.port' => $settings['mail.port'] ?? null,
-            'mail.mailers.smtp.username' => $settings['mail.username'] ?? null,
-            'mail.mailers.smtp.password' => $settings['mail.password'] ?? null, // No need for decrypt() here
-            'mail.mailers.smtp.encryption' => $settings['mail.encryption'] ?? null,
-            'mail.from.address' => $settings['mail.from.address'] ?? null,
-            'mail.from.name' => $settings['mail.from.name'] ?? null,
+            'mail.mailers.smtp.host' => $settings['mail.host'] ?? config('mail.mailers.smtp.host'),
+            'mail.mailers.smtp.port' => $settings['mail.port'] ?? config('mail.mailers.smtp.port'),
+            'mail.mailers.smtp.username' => $settings['mail.username'] ?? config('mail.mailers.smtp.username'),
+            'mail.mailers.smtp.password' => $settings['mail.password'] ?? config('mail.mailers.smtp.password'),
+            'mail.mailers.smtp.encryption' => $settings['mail.encryption'] ?? config('mail.mailers.smtp.encryption'),
+            'mail.from.address' => $settings['mail.from.address'] ?? config('mail.from.address'),
+            'mail.from.name' => $settings['mail.from.name'] ?? config('mail.from.name'),
         ]);
     }
-
 }
