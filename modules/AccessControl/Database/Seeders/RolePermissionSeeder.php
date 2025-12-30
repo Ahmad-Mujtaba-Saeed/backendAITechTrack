@@ -18,6 +18,7 @@ class RolePermissionSeeder extends Seeder
             'manage-roles',
             'manage-permissions',
             'manage-plans',
+            'manage-core-credentials',
             'manage-settings',
         ];
 

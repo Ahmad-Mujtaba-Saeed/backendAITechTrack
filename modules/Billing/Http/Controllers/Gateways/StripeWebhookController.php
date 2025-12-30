@@ -11,9 +11,9 @@ use Carbon\Carbon;
 use Modules\Billing\Models\Subscription;
 use Modules\Billing\Models\Payment;
 use Modules\Billing\Models\Plan;
-// use App\Mail\SubscriptionWelcomeMail;
-// use App\Mail\SubscriptionCancelledMail;
-// use Illuminate\Support\Facades\Mail;
+use Modules\Billing\Mail\SubscriptionWelcomeMail;
+use Modules\Billing\Mail\SubscriptionCancelledMail;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Exception\ApiErrorException;
 use Exception;
 
@@ -143,13 +143,13 @@ class StripeWebhookController extends Controller
                     $user->save();
                     
                     // Send welcome email
-                    // try {
-                    //     Mail::to($user->email)->send(new SubscriptionWelcomeMail($user, $plan , $subscriptionEndsAt , $subscriptionStartsAt));
-                    // } catch (\Exception $e) {
-                    //     return response()->json(['error' => 'Failed to send welcome email ' . $e->getMessage()], 500);
-                    //     // Log the error but don't fail the webhook
-                    //     Log::error('Failed to send welcome email: ' . $e->getMessage());
-                    // }
+                    try {
+                        Mail::to($user->email)->send(new SubscriptionWelcomeMail($user, $plan , $subscriptionEndsAt , $subscriptionStartsAt));
+                    } catch (\Exception $e) {
+                        return response()->json(['error' => 'Failed to send welcome email ' . $e->getMessage()], 500);
+                        // Log the error but don't fail the webhook
+                        Log::error('Failed to send welcome email: ' . $e->getMessage());
+                    }
                     
                     \DB::commit();
 
@@ -287,16 +287,16 @@ class StripeWebhookController extends Controller
                             $plan = Plan::find($localSubscription->type_id);
                             
                             // Send cancellation email
-                            // try {
-                            //     Mail::to($user->email)->send(new SubscriptionCancelledMail(
-                            //         $user, 
-                            //         $plan ?? null, 
-                            //         now()
-                            //     ));
-                            // } catch (\Exception $e) {
-                            //     // Log the error but don't fail the webhook
-                            //     Log::error('Failed to send cancellation email: ' . $e->getMessage());
-                            // }
+                            try {
+                                Mail::to($user->email)->send(new SubscriptionCancelledMail(
+                                    $user, 
+                                    $plan ?? null, 
+                                    now()
+                                ));
+                            } catch (\Exception $e) {
+                                // Log the error but don't fail the webhook
+                                Log::error('Failed to send cancellation email: ' . $e->getMessage());
+                            }
                         }
                     
                         break;
