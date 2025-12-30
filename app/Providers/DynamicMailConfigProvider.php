@@ -26,28 +26,30 @@ public function boot()
     }
 
     try {
-        $settings = CoreCredential::where('group', 'mail')
-            ->get()
-            ->mapWithKeys(function ($item) {
-                // Use getRawOriginal to get the raw value without decryption
-                return [$item->key => $item->is_encrypted 
-                    ? $item->getRawOriginal('value') 
-                    : $item->value];
-            })
-            ->toArray();
+      $settings = CoreCredential::where('group', 'mail')
+    ->get()
+    ->mapWithKeys(function ($item) {
+        // For encrypted values, we need to decrypt them manually
+        $value = $item->is_encrypted 
+            ? decrypt($item->getRawOriginal('value'))
+            : $item->value;
+            
+        return [$item->key => $value];
+    })
+    ->toArray();
 
-        // Only update config if we have settings
-        if (!empty($settings)) {
-            config([
-                'mail.mailers.smtp.host' => $settings['mail.host'] ?? config('mail.mailers.smtp.host'),
-                'mail.mailers.smtp.port' => $settings['mail.port'] ?? config('mail.mailers.smtp.port'),
-                'mail.mailers.smtp.username' => $settings['mail.username'] ?? config('mail.mailers.smtp.username'),
-                'mail.mailers.smtp.password' => $settings['mail.password'] ?? config('mail.mailers.smtp.password'),
-                'mail.mailers.smtp.encryption' => $settings['mail.encryption'] ?? config('mail.mailers.smtp.encryption'),
-                'mail.from.address' => $settings['mail.from.address'] ?? config('mail.from.address'),
-                'mail.from.name' => $settings['mail.from.name'] ?? config('mail.from.name'),
-            ]);
-        }
+// Only update config if we have settings
+if (!empty($settings)) {
+    config([
+        'mail.mailers.smtp.host' => $settings['mail.host'] ?? config('mail.mailers.smtp.host'),
+        'mail.mailers.smtp.port' => $settings['mail.port'] ?? config('mail.mailers.smtp.port'),
+        'mail.mailers.smtp.username' => $settings['mail.username'] ?? config('mail.mailers.smtp.username'),
+        'mail.mailers.smtp.password' => $settings['mail.password'] ?? config('mail.mailers.smtp.password'),
+        'mail.mailers.smtp.encryption' => $settings['mail.encryption'] ?? config('mail.mailers.smtp.encryption'),
+        'mail.from.address' => $settings['mail.from.address'] ?? config('mail.from.address'),
+        'mail.from.name' => $settings['mail.from.name'] ?? config('mail.from.name'),
+    ]);
+}
     } catch (\Exception $e) {
         \Log::error('Failed to load mail configuration from database', [
             'error' => $e->getMessage(),
