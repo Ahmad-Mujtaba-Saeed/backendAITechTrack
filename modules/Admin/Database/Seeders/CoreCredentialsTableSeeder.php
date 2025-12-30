@@ -29,7 +29,7 @@ class CoreCredentialsTableSeeder extends Seeder
             ],
             [
                 'key' => 'mail.password',
-                'value' => 'Jobtap2025!@',
+                'value' => encrypt('Jobtap2025!@'), // Encrypt the password here
                 'type' => 'string',
                 'group' => 'mail',
                 'is_encrypted' => true
