@@ -15,6 +15,6 @@ Route::prefix('internal')->group(function () {
     Route::get('/validate-agent-token', [AgentTokenController::class,'validate']);
 });
 
-Route::prefix('internal')->middleware('agent:subscription.read')->group(function () {
-    Route::get('/subscription', [AgentApiController::class, 'getUserSubscription']);
+Route::get('internal/get-user-subscription', [AgentApiController::class, 'getUserSubscription']);
+Route::prefix('')->middleware('agent:subscription.read')->group(function () {
 });

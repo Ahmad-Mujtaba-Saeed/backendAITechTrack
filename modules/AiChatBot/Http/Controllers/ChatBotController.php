@@ -29,31 +29,41 @@ class ChatBotController extends Controller
             scopes: ['chat.send', 'subscription.read']
         );
 
-        $response = Http::timeout(120)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-            ])
-            ->post('http://127.0.0.1:8940/chat', [
-                'message' => $validated['message'],
-                'user_id' => $user->id ?? null,
-                'agent_token' => $agentToken,
-            ]);
+        try {
+            $response = Http::timeout(120)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                ])
+                ->post('http://127.0.0.1:8940/chat', [
+                    'message' => $validated['message'],
+                    'user_id' => $user->id ?? null,
+                    'agent_token' => $agentToken,
+                ]);
 
-        if (!$response->successful()) {
+            if (!$response->successful()) {
+                return response()->json([
+                    'error' => 'AI service unavailable',
+                    'agent_token' => $agentToken,
+                    'details' => $response->json(),
+                ], 500);
+            }
+
+            $responseData = $response->json();
             return response()->json([
-                'error' => 'AI service unavailable',
-                'details' => $response->json()
+                'message' => $responseData['message'] ?? 'Chat response received',
+                'agent_token' => $agentToken,
+                'user_id' => $user->id ?? null,
+                'timestamp' => now()->toISOString(),
+                'server' => 'ai-chatbot-api',
+                'response_data' => $responseData,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'AI service call failed',
+                'agent_token' => $agentToken,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
             ], 500);
         }
-
-        $responseData = $response->json();
-        return response()->json([
-            'message' => $responseData['message'] ?? 'Chat response received',
-            'agent_token' => $agentToken,
-            'user_id' => $user->id ?? null,
-            'timestamp' => now()->toISOString(),
-            'server' => 'ai-chatbot-api',
-            'response_data' => $responseData
-        ]);
     }
 }
