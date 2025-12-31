@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'agent' => \App\Http\Middleware\RequireAgentToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

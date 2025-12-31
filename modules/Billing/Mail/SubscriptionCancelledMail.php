@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Mail;
+namespace Modules\Billing\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -42,7 +42,7 @@ class SubscriptionCancelledMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.subscription-cancelled',
+            view: 'billing::emails.subscription-cancelled',
         );
     }
 

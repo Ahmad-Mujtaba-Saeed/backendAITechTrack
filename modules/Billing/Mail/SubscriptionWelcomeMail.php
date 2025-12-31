@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Mail;
+namespace Modules\Billing\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -44,7 +44,7 @@ class SubscriptionWelcomeMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.subscription-welcome',
+            view: 'billing::emails.subscription-welcome',
         );
     }
 
