@@ -52,7 +52,9 @@ Route::get('/test-email', function () {
             'port' => config('mail.mailers.smtp.port'),
             'password' => config('mail.mailers.smtp.password'),
             'username' => config('mail.mailers.smtp.username'),
-            'encryption' => config('mail.mailers.smtp.encryption')
+            'encryption' => config('mail.mailers.smtp.encryption'),
+            'from_address' => config('mail.from.address'),
+            'from_name' => config('mail.from.name')
         ]);
 
         Mail::raw('This is a test email to verify SMTP credentials.', function ($message) use ($email) {
@@ -70,7 +72,9 @@ Route::get('/test-email', function () {
                 'port' => config('mail.mailers.smtp.port'),
                 'password' => config('mail.mailers.smtp.password'),
                 'username' => config('mail.mailers.smtp.username'),
-                'encryption' => config('mail.mailers.smtp.encryption')
+                'encryption' => config('mail.mailers.smtp.encryption'),
+                'from_address' => config('mail.from.address'),
+                'from_name' => config('mail.from.name')
             ]
         ]);
 
@@ -86,7 +90,9 @@ Route::get('/test-email', function () {
                 'port' => config('mail.mailers.smtp.port'),
                 'password' => config('mail.mailers.smtp.password'),
                 'username' => config('mail.mailers.smtp.username'),
-                'encryption' => config('mail.mailers.smtp.encryption')
+                'encryption' => config('mail.mailers.smtp.encryption'),
+                'from_address' => config('mail.from.address'),
+                'from_name' => config('mail.from.name')
             ]
         ], 500);
     }
