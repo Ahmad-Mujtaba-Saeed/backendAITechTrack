@@ -41,6 +41,7 @@ public function boot()
 // Only update config if we have settings
 if (!empty($settings)) {
     config([
+        'mail.default' => $settings['mail.default'] ?? config('mail.default'),
         'mail.mailers.smtp.host' => $settings['mail.host'] ?? config('mail.mailers.smtp.host'),
         'mail.mailers.smtp.port' => $settings['mail.port'] ?? config('mail.mailers.smtp.port'),
         'mail.mailers.smtp.username' => $settings['mail.username'] ?? config('mail.mailers.smtp.username'),

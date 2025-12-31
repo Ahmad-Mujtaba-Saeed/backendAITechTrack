@@ -14,6 +14,13 @@ class CoreCredentialsTableSeeder extends Seeder
     {
         $credentials = [
             [
+                'key'=> 'mail.default',
+                'value' => 'smtp',
+                'type' => 'string',
+                'group' => 'mail',
+                'is_encrypted' => false
+            ],
+            [
                 'key' => 'mail.host',
                 'value' => 'smtp.hostinger.com',
                 'type' => 'string',
