@@ -13,6 +13,7 @@ class RolePermissionSeeder extends Seeder
         // Create permissions
         $permissions = [
             'base-user',
+            'system-internal',
             'view-dashboard',
             'manage-users',
             'manage-roles',
