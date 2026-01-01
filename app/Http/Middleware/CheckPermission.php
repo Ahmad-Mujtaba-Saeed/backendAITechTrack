@@ -32,7 +32,7 @@ class CheckPermission
         }
 
         // Check if user has the required permission
-        if (!$user->hasPermissionTo($permission)) {
+        if (!$user->hasPermission($permission)) {
             return response()->json(['message' => 'Unauthorized. Missing permission: ' . $permission], 403);
         }
 

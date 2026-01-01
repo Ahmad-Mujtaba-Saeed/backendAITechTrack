@@ -146,7 +146,9 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return $request->user();
+        $user = $request->user();
+        $user->load('roles.permissions');
+        return response()->json($user);
     }
 
     public function logout(Request $request)
