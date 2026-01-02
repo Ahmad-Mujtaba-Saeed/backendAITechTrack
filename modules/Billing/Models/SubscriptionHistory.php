@@ -65,6 +65,12 @@ class SubscriptionHistory extends Model implements Auditable
         return $this->belongsTo(Subscription::class);
     }
 
+
+    public function payment()
+    {
+        return $this->belongsTo(Payment::class, 'payment_id', 'id');
+    }
+
     /**
      * Get the user that owns the subscription.
      */

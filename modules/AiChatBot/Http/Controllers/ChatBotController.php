@@ -34,7 +34,7 @@ class ChatBotController extends Controller
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])
-                ->post('http://127.0.0.1:8940/chat', [
+                ->post('http://host.docker.internal:8940/chat', [
                     'message' => $validated['message'],
                     'user_id' => $user->id ?? null,
                     'agent_token' => $agentToken,

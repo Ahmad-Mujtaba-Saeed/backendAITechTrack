@@ -8,7 +8,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Modules\AccessControl\Traits\HasRolesAndPermissions;
 use OwenIt\Auditing\Contracts\Auditable;
- use Modules\Billing\Models\Subscription;
+use Modules\Billing\Models\Subscription;
+use Modules\Billing\Models\Plan;
 
 class User extends Authenticatable implements Auditable
 {
@@ -38,7 +39,7 @@ class User extends Authenticatable implements Auditable
         'trial_used_at',
     ];
 
-    protected $appends = ['profile_img_url','plan_id'];
+    protected $appends = ['profile_img_url','plan_id','plan'];
 
     public function getProfileImgUrlAttribute()
     {
@@ -55,6 +56,21 @@ class User extends Authenticatable implements Auditable
     public function getPlanIdAttribute()
     {
         return (int) ($this->subscription()->where('status', 'active')->orWhere('status', 'trialing')->first()->type_id ?? null);
+    }
+
+    public function getPlanAttribute()
+    {
+        $subscription = $this->subscription()
+            ->whereIn('status', ['active', 'trialing'])
+            ->first();
+
+        if (!$subscription || !$subscription->type_id) {
+            return null;
+        }
+
+        $plan = Plan::find($subscription->type_id);
+
+        return $plan ?: null;
     }
 
     public function subscription()

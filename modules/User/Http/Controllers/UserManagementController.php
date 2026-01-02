@@ -12,7 +12,7 @@ class UserManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query();
+        $query = User::query()->with('roles');
         if ($request->get('search')) {
             $query->where('name', 'like', '%' . $request->get('search') . '%')
                 ->orWhere('email', 'like', '%' . $request->get('search') . '%')
@@ -111,7 +111,7 @@ class UserManagementController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-        $subscriptions = $user->subscription()->with('history','payment')->get();
+        $subscriptions = $user->subscription()->with('history.payment','payment')->get();
         
         return response()->json([
             'user' => $user,
