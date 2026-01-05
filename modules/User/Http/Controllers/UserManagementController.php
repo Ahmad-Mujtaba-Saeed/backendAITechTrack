@@ -130,7 +130,7 @@ class UserManagementController extends Controller
                 'message' => 'User not found'
             ], 404);
         }
-        $subscriptions = $user->subscription()->with('history.payments','payments')->get();
+        $subscriptions = $user->subscription()->with('history.plan','plan')->get();
         
         return response()->json([
             'user' => $user,

@@ -65,6 +65,11 @@ class SubscriptionHistory extends Model implements Auditable
         return $this->belongsTo(Subscription::class);
     }
 
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class, 'type_id', 'id');
+    }
+
 
     public function payments()
     {
