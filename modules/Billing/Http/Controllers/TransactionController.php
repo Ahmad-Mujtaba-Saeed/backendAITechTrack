@@ -15,7 +15,10 @@ class TransactionController extends Controller
         $payment_status = $request->input('payment_status');
         $perPage = $request->input('per_page', 25);
         $payments = Payment::when($search, function ($query) use ($search) {
-            return $query->where('payment_transaction_id', 'like', '%' . $search . '%');
+            return $query->where(function ($q) use ($search) {
+                $q->where('payment_transaction_id', 'like', '%' . $search . '%')
+                    ->orWhere('subscription_id', 'like', '%' . $search . '%');
+            });
         })
         ->when($payment_status, function ($query) use ($payment_status) {
             return $query->where('payment_status', $payment_status);
