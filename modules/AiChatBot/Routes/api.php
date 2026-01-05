@@ -9,6 +9,7 @@ Route::middleware(['auth:sanctum'])->prefix('/ai-chatbot')
     ->group(function () {
         Route::get('/', [ChatBotController::class, 'index']);
         Route::post('/chat', [ChatBotController::class, 'chat']);
+        Route::post('/chat/resume', [ChatBotController::class, 'resume']);
     });
 
 Route::prefix('internal')->group(function () {
@@ -17,4 +18,5 @@ Route::prefix('internal')->group(function () {
 
 Route::prefix('internal')->middleware('agent:subscription.read')->group(function () {
     Route::get('/get-user-subscription', [AgentApiController::class, 'getUserSubscription']);
+    Route::post('/cancel-user-subscription', [AgentApiController::class, 'cancelUserSubscription']);
 });

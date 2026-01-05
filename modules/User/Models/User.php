@@ -29,7 +29,8 @@ class User extends Authenticatable implements Auditable
         'lang',
         'time_zone',
         'email_notif',
-        'push_notif'
+        'push_notif',
+        'is_active'
     ];
 
     protected $hidden = [

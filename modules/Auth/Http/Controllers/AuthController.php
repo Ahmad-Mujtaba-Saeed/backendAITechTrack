@@ -84,6 +84,15 @@ class AuthController extends Controller
             'password' => $request->password,
         ];
 
+        $user = User::where('email', $request->email)->first();
+
+        if(!$user->is_active){
+            return response()->json([
+                'status' => false,
+                'message' => 'User is disabled by admin',
+            ], 401);
+        }
+
         $loginSuccessful = Auth::attempt(['email' => $request->email, 'password' => $request->password]);
         
         // Log the login attempt

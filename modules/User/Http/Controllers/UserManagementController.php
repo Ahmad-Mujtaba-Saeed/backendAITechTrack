@@ -25,6 +25,17 @@ class UserManagementController extends Controller
         ], 200);
     }
 
+    public function toggle_user_enable_disable(Request $request, $user_id){
+        $user = User::find($user_id);
+        $user->is_active = !($user->is_active);
+        $user->save();
+        return response()->json([
+            'status' => true,
+            'user' => $user,
+            'message' => "User {$user->name} " . ($user->is_active ? 'enabled' : 'disabled') . " successfully",
+        ]);
+    }
+
     public function delete(Request $request, $user_id){
 
         $user = User::find($user_id);
