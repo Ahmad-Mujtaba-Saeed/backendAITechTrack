@@ -100,7 +100,6 @@ class SubscriptionHistory extends Model implements Auditable
             'subscription_id' => $subscription->id,
             'user_id' => $subscription->user_id,
             'name' => $subscription->name,
-            'payment_id' => $subscription->payment_id,
             'type' => $subscription->type,
             'type_id' => $subscription->type_id,
             'sub_id' => $subscription->sub_id,
