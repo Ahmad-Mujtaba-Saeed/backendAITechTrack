@@ -66,9 +66,9 @@ class SubscriptionHistory extends Model implements Auditable
     }
 
 
-    public function payment()
+    public function payments()
     {
-        return $this->belongsTo(Payment::class, 'payment_id', 'id');
+        return $this->hasMany(Payment::class, 'subscription_id', 'sub_id');
     }
 
     /**
