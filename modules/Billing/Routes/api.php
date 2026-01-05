@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Billing\Http\Controllers\Gateways\StripeController;
 use Modules\Billing\Http\Controllers\Gateways\StripeWebhookController;
 use Modules\Billing\Http\Controllers\TransactionController;
+use Modules\Billing\Http\Controllers\SubscriptionController;
 // Include admin routes
 require __DIR__ . '/plans.php';
 
@@ -19,9 +20,12 @@ Route::middleware(['auth:sanctum'])->prefix('/billing')
     Route::get('/subscription/payment-method-intent/{customerId}', [StripeController::class, 'createSetupIntent']);
     Route::post('/subscription/payment-method-default/{customerId}', [StripeController::class, 'makeDefaultPaymentMethod']);
     Route::post('/subscription/change-plan/{planId}', [StripeController::class, 'changePlan']); 
-
-    Route::prefix('/transactions')->group(function () {
-        Route::get('/', [TransactionController::class, 'index']);
+    
+    Route::middleware(['permission:manage-plans'])->group(function () {
+        Route::get('/subscriptions', [SubscriptionController::class, 'getAllSubscriptions']);
+        Route::prefix('/transactions')->group(function () {
+            Route::get('/', [TransactionController::class, 'index']);
+        });
     });
 });
 
