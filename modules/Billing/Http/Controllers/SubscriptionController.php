@@ -36,9 +36,13 @@ class SubscriptionController extends Controller
         $subscriptions = $query->orderBy('created_at', 'desc')
                                ->paginate($perPage);
 
+        // Get unique status values for filtering
+        $uniqueStatuses = Subscription::distinct()->pluck('status')->filter()->values();
+
         return response()->json([
             'status' => true,
-            'subscriptions' => $subscriptions
+            'subscriptions' => $subscriptions,
+            'unique_statuses' => $uniqueStatuses
         ]);
     }
 }
