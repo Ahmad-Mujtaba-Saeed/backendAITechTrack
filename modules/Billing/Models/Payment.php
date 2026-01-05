@@ -29,6 +29,7 @@ class Payment extends Model implements Auditable
         'user_id',
         'related_type_id',
         'related_type',
+        'subscription_id',
         'note',
         'payment_status',
         'payment_amount',
@@ -63,6 +64,11 @@ class Payment extends Model implements Auditable
         return $this->belongsTo(User::class);
     }
 
+
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
+    }
     /**
      * Get the related model that the payment is for.
      */

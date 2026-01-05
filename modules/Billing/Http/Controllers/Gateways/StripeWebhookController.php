@@ -37,31 +37,61 @@ class StripeWebhookController extends Controller
         try {
             switch ($event->type) {
 
-                // case 'invoice.payment_succeeded' :
-                //     $invoice = $event->data->object;
+                case 'invoice.payment_succeeded' :
+                    $invoice = $event->data->object;
 
+                    $email = $invoice->customer_email;
                     
-                //     $email = $invoice->customer_email;
+                    $user = User::where('email', $email)->first();
                     
-                //     $user = User::where('email', $email)->first();
-                    
-                //     $price_id = $invoice->lines->data[0]->pricing->price_details->price;
+                    $price_id = $invoice->lines->data[0]->pricing->price_details->price;
                     
 
-                //     $plan = Plan::where('stripe_price_id', $price_id)->first();
+                    $plan = Plan::where('stripe_price_id', $price_id)->first();
 
-                //     $payment = Payment::create([
-                //         'user_id' => $user->id,
-                //         'related_type' => 'membership',
-                //         'related_type_id' => $plan->id,
-                //         'payment_amount' => $invoice->total / 100,  // Convert from cents to dollars
-                //         'payment_transaction_id' => $invoice->id,
-                //         'payment_gateway' => 'stripe',
-                //         'payment_status' => $invoice->status,
-                //         'payment_currency' => strtoupper($invoice->currency), // Ensure uppercase currency code
-                //     ]);
+                    $payment = Payment::create([
+                        'user_id' => $user->id,
+                        'related_type' => 'membership',
+                        'related_type_id' => $plan->id,
+                        'subscription_id' => $invoice->subscription,
+                        'payment_amount' => $invoice->total / 100,  // Convert from cents to dollars
+                        'payment_transaction_id' => $invoice->id,
+                        'payment_gateway' => 'stripe',
+                        'payment_status' => $invoice->status,
+                        'payment_currency' => strtoupper($invoice->currency), // Ensure uppercase currency code
+                    ]);
 
-                //     break;
+                    break;
+
+                case 'invoice.payment_failed':
+                    $invoice = $event->data->object;
+
+                    $email = $invoice->customer_email;
+
+                    $user = User::where('email', $email)->first();
+
+                    if (!$user) {
+                        // Optional: log and safely exit
+                        break;
+                    }
+
+                    $price_id = $invoice->lines->data[0]->pricing->price_details->price;
+
+                    $plan = Plan::where('stripe_price_id', $price_id)->first();
+
+                    Payment::create([
+                        'user_id' => $user->id,
+                        'related_type' => 'membership',
+                        'related_type_id' => $plan?->id,
+                        'subscription_id' => $invoice->subscription,
+                        'payment_amount' => $invoice->total / 100,
+                        'payment_transaction_id' => $invoice->id,
+                        'payment_gateway' => 'stripe',
+                        'payment_status' => $invoice->status,
+                        'payment_currency' => strtoupper($invoice->currency),
+                    ]);
+
+                    break;
 
 
                 case 'customer.subscription.created' :
@@ -90,16 +120,16 @@ class StripeWebhookController extends Controller
 
                 $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
-                $payment = Payment::create([
-                    'user_id' => $user->id,
-                    'related_type' => 'membership',
-                    'related_type_id' => $plan->id,
-                    'payment_amount' => $invoice->amount_paid / 100,  // Use actual amount paid from invoice
-                    'payment_transaction_id' => $subscription->latest_invoice,
-                    'payment_gateway' => 'stripe',
-                    'payment_status' => $invoice->status,
-                    'payment_currency' => strtoupper($invoice->currency), // Use currency from invoice
-                ]);
+                // $payment = Payment::create([
+                //     'user_id' => $user->id,
+                //     'related_type' => 'membership',
+                //     'related_type_id' => $plan->id,
+                //     'payment_amount' => $invoice->amount_paid / 100,  // Use actual amount paid from invoice
+                //     'payment_transaction_id' => $subscription->latest_invoice,
+                //     'payment_gateway' => 'stripe',
+                //     'payment_status' => $invoice->status,
+                //     'payment_currency' => strtoupper($invoice->currency), // Use currency from invoice
+                // ]);
                 
                 // Handle trial end date (can be null if no trial)
                 $trialEndsAt = $subscription->trial_end 
@@ -127,7 +157,6 @@ class StripeWebhookController extends Controller
                             'name'          => $plan->name,
                             'type'          => 'membership',
                             'type_id'       => $plan->id,
-                            'payment_id'    => $payment->id,
                             'cus_id'        => $customerId,
                             'trial_ends_at' => $trialEndsAt,
                             'starts_at'     => $subscriptionStartsAt,
@@ -181,16 +210,16 @@ class StripeWebhookController extends Controller
                 $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
                 
-                $payment = Payment::create([
-                    'user_id' => $user->id,
-                    'related_type' => 'membership',
-                    'related_type_id' => $plan->id,
-                    'payment_amount' => $invoice->amount_paid / 100,  // Use actual amount paid from invoice
-                    'payment_transaction_id' => $subscription->latest_invoice,
-                    'payment_gateway' => 'stripe',
-                    'payment_status' => $invoice->status,
-                    'payment_currency' => strtoupper($invoice->currency), // Use currency from invoice
-                ]);
+                // $payment = Payment::create([
+                //     'user_id' => $user->id,
+                //     'related_type' => 'membership',
+                //     'related_type_id' => $plan->id,
+                //     'payment_amount' => $invoice->amount_paid / 100,  // Use actual amount paid from invoice
+                //     'payment_transaction_id' => $subscription->latest_invoice,
+                //     'payment_gateway' => 'stripe',
+                //     'payment_status' => $invoice->status,
+                //     'payment_currency' => strtoupper($invoice->currency), // Use currency from invoice
+                // ]);
                 
                 // Handle trial end date (can be null if no trial)
                 $trialEndsAt = $subscription->trial_end 
@@ -216,7 +245,6 @@ class StripeWebhookController extends Controller
                         'name' => $plan->name,
                     'type' => 'membership',
                     'type_id' => $plan->id,
-                    'payment_id' => $payment->id,
                     'cus_id' => $customerId,
                     'trial_ends_at' => $trialEndsAt,
                     'ends_at' => $subscriptionEndsAt,

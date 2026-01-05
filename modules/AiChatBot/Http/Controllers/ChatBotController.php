@@ -23,7 +23,7 @@ class ChatBotController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string',
-            'thread_id' => 'required|string',
+            'thread_id' => 'nullable|string',
         ]);
 
         $user = auth()->user();
@@ -40,7 +40,7 @@ class ChatBotController extends Controller
                 ])
                 ->post('http://host.docker.internal:8940/chat', [
                     'message' => $validated['message'],
-                    'thread_id' => $validated['thread_id'],
+                    'thread_id' => $validated['thread_id'] ?? null,
                     'user_id' => $user->id ?? null,
                     'agent_token' => $agentToken,
                 ]);
@@ -81,8 +81,7 @@ class ChatBotController extends Controller
     {
         $validated = $request->validate([
             'decision' => 'required|string',
-            'thread_id' => 'required|string',
-            'key' => 'required|string',
+            'thread_id' => 'required|string'
         ]);
 
         $user = auth()->user();
@@ -100,7 +99,6 @@ class ChatBotController extends Controller
                 ->post('http://host.docker.internal:8940/chat/resume', [
                     'decision' => $validated['decision'],
                     'thread_id' => $validated['thread_id'],
-                    'key' => $validated['key'],
                     'user_id' => $user->id ?? null,
                     'agent_token' => $agentToken,
                 ]);

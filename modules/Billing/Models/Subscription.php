@@ -23,7 +23,6 @@ class Subscription extends Model implements Auditable
     protected $fillable = [
         'user_id',
         'name',
-        'payment_id',
         'type',
         'type_id',
         'sub_id',
@@ -100,10 +99,11 @@ class Subscription extends Model implements Auditable
         return $this->ends_at && $this->ends_at->isFuture();
     }
 
-    public function payment(): BelongsTo
+    public function payments()
     {
-        return $this->belongsTo(Payment::class);
+        return $this->hasMany(Payment::class);
     }
+
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'type_id', 'id');

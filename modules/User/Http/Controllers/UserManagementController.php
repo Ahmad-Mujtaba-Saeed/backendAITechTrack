@@ -12,15 +12,23 @@ class UserManagementController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query()->with('roles');
+        $query = User::query()->with('roles')
+            ->whereHas('roles', function ($query) {
+                $query->where('slug', '!=', 'admin');
+            });
+
         if ($request->get('search')) {
-            $query->where('name', 'like', '%' . $request->get('search') . '%')
-                ->orWhere('email', 'like', '%' . $request->get('search') . '%')
-                ->orWhere('phone', 'like', '%' . $request->get('search') . '%');
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%' . request()->get('search') . '%')
+                ->orWhere('email', 'like', '%' . request()->get('search') . '%')
+                ->orWhere('phone', 'like', '%' . request()->get('search') . '%');
+            });
         }
-        $users = $query->paginate($request->get('per_page', 10));
+
+        $users = $query->paginate($request->get('per_page', 2));
+
         return response()->json([
-            'message' => 'User management endpoint', 
+            'message' => 'User management endpoint',
             'users' => $users
         ], 200);
     }

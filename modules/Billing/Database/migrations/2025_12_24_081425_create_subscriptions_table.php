@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('payment_id')->nullable();
             $table->string('name');
             $table->string('type');
             $table->string('type_id');
@@ -26,7 +25,6 @@ return new class extends Migration
 
             // Add indexes
             $table->index('user_id');
-            $table->index('payment_id');
         });
 
         // Add foreign key constraints
@@ -36,10 +34,6 @@ return new class extends Migration
                   ->on('users')
                   ->onDelete('cascade');
 
-            $table->foreign('payment_id')
-                  ->references('id')
-                  ->on('payments')
-                  ->onDelete('set null');
         });
     }
 

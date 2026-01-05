@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('related_type')->nullable();
             $table->unsignedBigInteger('related_type_id')->nullable();
             $table->text('note')->nullable();
+            $table->string('subscription_id')->nullable();
             $table->string('payment_status')->default('pending');
             $table->integer('payment_amount');
             $table->string('payment_currency', 3)->default('USD');
