@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Billing\Models\Subscription;
 use Modules\User\Models\User;
+use Modules\Resume\Models\Resume;
 use Stripe\Stripe;
 
 class AgentApiController extends Controller
@@ -115,5 +116,55 @@ class AgentApiController extends Controller
                 'timestamp' => now()->toISOString(),
             ]);
         }
+    }
+
+
+    public function createEmpty(Request $request)
+    {
+        $request->validate([
+            'title' => 'nullable|string',
+            'newEmptyResume' => 'required',
+        ]);
+
+        $token = $request->bearerToken();
+
+        $data = Cache::get("agent_token:{$token}");
+
+        if (!$data) {
+            return response()->json(['error' => 'Token invalid or expired'], 401);
+        }
+
+        $newEmptyResume = $request->newEmptyResume;
+
+        // Create a new resume
+        $resume = Resume::create([
+            'user_id' => $data['user_id'],
+            'title' => $request->title ?? 'My Resume',
+            'cv_resumejson' => $newEmptyResume,
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $resume,
+            'redirect_url' => str_replace('/', '\/', env('FRONTEND_URL') . '/cv-generate/' . $resume->id)
+        ]);
+    }
+
+
+    public function getUserProfile(Request $request){
+        $token = $request->bearerToken();
+
+        $data = Cache::get("agent_token:{$token}");
+
+        if (!$data) {
+            return response()->json(['error' => 'Token invalid or expired'], 401);
+        }
+
+        $user = User::find($data['user_id']);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $user
+        ]);
     }
 }

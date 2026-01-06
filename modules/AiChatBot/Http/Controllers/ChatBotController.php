@@ -30,7 +30,7 @@ class ChatBotController extends Controller
 
         $agentToken = AgentTokenService::issue(
             $user->id,
-            scopes: ['chat.send', 'subscription.read']
+            scopes: ['chat.send', 'subscription.manage','resume.manage']
         );
 
         try {
@@ -88,7 +88,7 @@ class ChatBotController extends Controller
 
         $agentToken = AgentTokenService::issue(
             $user->id,
-            scopes: ['chat.send', 'subscription.read']
+            scopes: ['chat.send', 'subscription.manage','resume.manage']
         );
 
         try {
