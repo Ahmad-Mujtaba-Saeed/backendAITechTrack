@@ -6,6 +6,7 @@ use Modules\Resume\Http\Controllers\ResumeController;
 
 Route::middleware(['auth:sanctum'])->prefix('/resume')
     ->group(function () {
+    Route::get('/',[ResumeController::class, 'index']);
     Route::post('/create-empty', [ResumeController::class, 'createEmpty']);
     Route::post('/parse-resume', [ResumeController::class, 'parseResumeOCRPyScript']);
     // Route::post('/parse-resume-gpt', [ResumeController::class, 'parseResumeGPT']);

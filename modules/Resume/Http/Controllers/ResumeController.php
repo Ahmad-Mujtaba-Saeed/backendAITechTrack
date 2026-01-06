@@ -21,9 +21,22 @@ class ResumeController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $perPage = $request->per_page ?? 3;
+        $page = $request->page ?? 1;
+
+        $resumes = Resume::where('user_id', auth()->id())
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'success' => true,
+            'data' => $resumes,
+            'total' => $resumes->total(),
+            'per_page' => (int)$perPage,
+            'current_page' => (int)$page,
+            'last_page' => ceil($resumes->total() / $perPage)
+        ]);
     }
 
     /**
