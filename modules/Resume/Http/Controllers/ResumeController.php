@@ -157,46 +157,37 @@ class ResumeController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function delete(string $id)
-{
-    $resume = Resume::findOrFail($id);
-    if($resume->user_id != Auth::user()->id) {
+    public function delete(Request $request, string $id)
+    {
+        $resume = Resume::findOrFail($id);
+        if($resume->user_id != Auth::user()->id) {
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot delete this resume.',
+            ], 403);
+        }
+
+        // Delete the resume
+        $resume->delete();
+
+
+        $perPage = $request->per_page ?? 3;
+        $page = $request->page ?? 1;
+
+        $resumes = Resume::where('user_id', auth()->id())
+                ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
-            'success' => false,
-            'message' => 'Cannot delete this resume.',
-        ], 403);
-    }
-
-    // Delete the resume
-    $resume->delete();
-
-    // Delete the related activity
-    // CvRecentActivity::where('user_id', Auth::user()->id)
-    //     ->where('type_id', $id)
-    //     ->where('type', 'resume')
-    //     ->delete();
-
-    // Return paginated recent activities
-    
-    $perPage = request()->per_page ?? 3;
-    $page = request()->page ?? 1;
-    
-   $resume = Resume::where('user_id', Auth::user()->id)
-   ->paginate($perPage, ['*'], 'page', $page);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Resume deleted successfully',
-        'data' => [
-            'data' => $resume,
-            'total' => $resume->total,
+            'success' => true,
+            'message' => "Resume Deleted Successfully",
+            'data' => $resumes,
+            'total' => $resumes->total(),
             'per_page' => (int)$perPage,
             'current_page' => (int)$page,
-            'last_page' => ceil($resume->total / $perPage)
-        ]
-    ]);
-}
+            'last_page' => ceil($resumes->total() / $perPage)
+        ]);
+    }
 
 
 
