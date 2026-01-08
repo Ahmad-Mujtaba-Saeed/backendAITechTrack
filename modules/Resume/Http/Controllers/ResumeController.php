@@ -343,6 +343,10 @@ class ResumeController extends Controller
                                 'ocr_text_length' => strlen($cleanOutput)
                             ]);
 
+                            Log::info('OCR output', [
+                                'ocr_output' => $cleanOutput
+                            ]);
+
                             if (empty($cleanOutput)) {
                                 Log::error('OCR returned empty output');
                                 throw new \Exception('OCR processing returned no text');
