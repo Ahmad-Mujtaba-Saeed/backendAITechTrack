@@ -40,7 +40,7 @@ class User extends Authenticatable implements Auditable
         'trial_used_at',
     ];
 
-    protected $appends = ['profile_img_url','plan_id','plan'];
+    protected $appends = ['profile_img_url','plan_id','plan','plan_expire_date'];
 
     public function getProfileImgUrlAttribute()
     {
@@ -79,6 +79,11 @@ class User extends Authenticatable implements Auditable
         $plan = Plan::find($subscription->type_id);
 
         return $plan ?: null;
+    }
+
+    public function getPlanExpireDateAttribute(){
+         $subscription = $this->subscription()->first();
+         return $subscription ? $subscription->ends_at : null;
     }
 
     public function subscription()
