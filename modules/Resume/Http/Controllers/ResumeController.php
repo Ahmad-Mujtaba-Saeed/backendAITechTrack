@@ -586,25 +586,25 @@ class ResumeController extends Controller
                 PROMPT;
 
 
-            $gptResponse = Http::timeout(180)->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
-                'Content-Type' => 'application/json',
-            ])->post('https://api.openai.com/v1/chat/completions', [
-                'model' => $model, // Dynamic model selection
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => $Systemprompt
+                $gptResponse = Http::timeout(180)->withHeaders([
+                    'Authorization' => "Bearer {$apiKey}",
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.openai.com/v1/chat/completions', [
+                    'model' => $model, // Dynamic model selection
+                    'messages' => [
+                        [
+                            'role' => 'system',
+                            'content' => $Systemprompt
+                        ],
+                        [
+                            'role' => 'user',
+                            'content' => "Raw Text : {$cleanOutput}"
+                        ]
                     ],
-                    [
-                        'role' => 'user',
-                        'content' => "Raw Text : {$cleanOutput}"
-                    ]
-                ],
-                'temperature' => 0.0, // Minimize randomness
-                'response_format' => ['type' => 'json_object'], // Ensure JSON output
-                'max_tokens' => 5000, // Allow for detailed evaluation
-            ]);
+                    'temperature' => 0.0, // Minimize randomness
+                    'response_format' => ['type' => 'json_object'], // Ensure JSON output
+                    'max_tokens' => 5000, // Allow for detailed evaluation
+                ]);
 
         
             $evaluation = $gptResponse->json()['choices'][0]['message']['content'] ?? null;
