@@ -27,6 +27,7 @@ class ResumeController extends Controller
         $page = $request->page ?? 1;
 
         $resumes = Resume::where('user_id', auth()->id())
+            ->latest('updated_at')
             ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
