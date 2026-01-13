@@ -23,7 +23,7 @@ class ResumeController extends Controller
      */
     public function index(Request $request)
     {
-        $perPage = $request->per_page ?? 3;
+        $perPage = $request->per_page ?? 5;
         $page = $request->page ?? 1;
 
         $resumes = Resume::where('user_id', auth()->id())

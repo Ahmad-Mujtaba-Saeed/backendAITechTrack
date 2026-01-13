@@ -25,6 +25,8 @@ Route::middleware(['auth:sanctum','permission:manage-core-credentials'])
 Route::middleware(['auth:sanctum','permission:view-dashboard'])
     ->prefix('admin/dashboard')
     ->group(function () {
+        
         Route::get('/payments-data', [DashboardContrller::class, 'getPaymentsData'])->name('payments-data.index');
         Route::get('/recent-subscriptions', [DashboardContrller::class, 'recentSubscriptions'])->name('recent-subscriptions.index');
+        Route::get('/recent-activities', [DashboardContrller::class, 'RecentActivities'])->name('recent-activities.index');
     });
