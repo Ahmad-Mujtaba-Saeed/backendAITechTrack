@@ -93,11 +93,14 @@ class DashboardContrller extends Controller
     public function RecentActivities(Request $request){
         $user = $request->user();
         
-        // Get all audit records, not just user-specific ones
+        // Get pagination parameters
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 10);
+        
+        // Get all audit records with pagination
         $activities = \OwenIt\Auditing\Models\Audit::with('user')
             ->latest()
-            ->take(10)
-            ->get();
+            ->paginate($perPage, ['*'], 'page', $page);
         
         $formattedActivities = $activities->map(function ($activity) {
             $message = $this->formatActivityMessage($activity);
@@ -119,7 +122,15 @@ class DashboardContrller extends Controller
         
         return response()->json([
             'status' => true,
-            'activities' => $formattedActivities
+            'activities' => $formattedActivities,
+            'pagination' => [
+                'current_page' => $activities->currentPage(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
+                'from' => $activities->firstItem(),
+                'to' => $activities->lastItem()
+            ]
         ]);
     }
     
