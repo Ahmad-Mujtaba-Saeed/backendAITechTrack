@@ -86,12 +86,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if(!$user->is_active){
-            return response()->json([
-                'status' => false,
-                'message' => 'User is disabled by admin',
-            ], 401);
-        }
+
 
         $loginSuccessful = Auth::attempt(['email' => $request->email, 'password' => $request->password]);
         
@@ -109,6 +104,14 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+
+        if(!$user->is_active){
+            return response()->json([
+                'status' => false,
+                'message' => 'User is disabled by admin',
+            ], 401);
+        }
+        
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
