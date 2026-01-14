@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Modules\Billing\Mail\SubscriptionCancelledMail;
 use Modules\Billing\Mail\SubscriptionWelcomeMail;
+use Modules\Billing\Mail\NewSubscriptionAdminMail;
 use Modules\Billing\Models\Payment;
 use Modules\Billing\Models\Plan;
 use Modules\Billing\Models\Subscription;
