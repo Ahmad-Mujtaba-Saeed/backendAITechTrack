@@ -162,16 +162,16 @@ class StripeWebhookController extends Controller
                     try {
                         Mail::to($user->email)->send(new SubscriptionWelcomeMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt));
                     } catch (\Exception $e) {
-                        return response()->json(['error' => 'Failed to send welcome email ' . $e->getMessage()], 500);
                         // Log the error but don't fail the webhook
                         Log::error('Failed to send welcome email: ' . $e->getMessage());
                     }
 
                     try {
-                        $adminUser = User::hasRole('admin')->first();
+                        $adminUser = User::whereHas('roles', function($query) {
+                            $query->where('slug', 'admin');
+                        })->first();
                         Mail::to($adminUser->email)->send(new NewSubscriptionAdminMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt));
                     } catch (\Exception $e) {
-                        return response()->json(['error' => 'Failed to send welcome email ' . $e->getMessage()], 500);
                         // Log the error but don't fail the webhook
                         Log::error('Failed to send welcome email: ' . $e->getMessage());
                     }
