@@ -21,6 +21,13 @@ class PlanController extends Controller
         return Plan::latest()->get();
     }
 
+    public function toggleActive(Request $request, Plan $plan){
+        $plan->update([
+            'is_active' => !$plan->is_active
+        ]);
+        return response()->json($plan);
+    }
+
     public function store(StorePlanRequest $request)
     {
         try {
