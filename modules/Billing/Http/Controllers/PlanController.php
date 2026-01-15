@@ -11,14 +11,19 @@ use Illuminate\Http\Request;
 
 class PlanController extends Controller
 {
-    public function activePlans()
+    public function activePlans(Request $request)
     {
         return Plan::where('is_active', true)->get();
     }
     
-    public function index()
+    public function index(Request $request)
     {
-        return Plan::latest()->get();
+        $search = $request->search;
+        return Plan::where('name', 'like', '%' . $search . '%')
+            ->orWhere('price', 'like', '%' . $search . '%')
+            ->orWhere('subdesc', 'like', '%' . $search . '%')
+            ->latest()
+            ->paginate(10);
     }
 
     public function toggleActive(Request $request, Plan $plan){
