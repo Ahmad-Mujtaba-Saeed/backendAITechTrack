@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    python3 \
+    python3-pip \
+    tesseract-ocr \
+    poppler-utils \
     && docker-php-ext-install \
         pdo_mysql \
         mbstring \
@@ -20,6 +24,15 @@ RUN apt-get update && apt-get install -y \
         zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+
+# ===============================
+# Python OCR dependencies
+# ===============================
+RUN pip3 install --no-cache-dir --break-system-packages \
+    pytesseract \
+    pdf2image \
+    pillow
 
 # ===============================
 # Composer

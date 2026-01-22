@@ -8,5 +8,6 @@ return [
     Modules\Admin\ModuleServiceProvider::class,
     Modules\Auth\ModuleServiceProvider::class,
     Modules\Billing\ModuleServiceProvider::class,
+    Modules\Resume\ModuleServiceProvider::class,
     Modules\User\ModuleServiceProvider::class,
 ];

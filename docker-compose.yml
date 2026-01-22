@@ -5,55 +5,55 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-    container_name: hms_backend_app
+    container_name: backend_app
     volumes:
       - .:/var/www  
       - ./docker/php/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     depends_on:
       - mysql
     networks:
-      - hms_backend
+      - backend
 
   nginx:
     image: nginx:1.25-alpine
-    container_name: hms_backend_nginx
+    container_name: backend_nginx
     ports:
-      - "8985:80"
+      - "8085:80"
     volumes:
       - .:/var/www
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - app
     networks:
-      - hms_backend
+      - backend
 
   mysql:
     image: mysql:8.0
-    container_name: hms_backend_mysql
+    container_name: backend_mysql
     environment:
       MYSQL_DATABASE: backend
       MYSQL_USER: backend
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: root
     volumes:
-      - hms_backend_mysql:/var/lib/mysql
+      - backend_mysql:/var/lib/mysql
     networks:
-      - hms_backend
+      - backend
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: hms_backend_phpmyadmin
+    container_name: backend_phpmyadmin
     environment:
       PMA_HOST: mysql
     ports:
-      - "8986:80"
+      - "8086:80"
     depends_on:
       - mysql
     networks:
-      - hms_backend
+      - backend
 
 volumes:
-  hms_backend_mysql:
+  backend_mysql:
 
 networks:
-  hms_backend:
+  backend:

@@ -146,6 +146,9 @@ class DashboardContrller extends Controller
         
         // Handle different entity types
         switch ($type) {
+            case 'Resume':
+                return $this->formatResumeActivity($event, $oldValues, $newValues);
+                
             case 'Subscription':
                 return $this->formatSubscriptionActivity($event, $oldValues, $newValues);
                 
@@ -159,7 +162,27 @@ class DashboardContrller extends Controller
                 return $this->formatGenericActivity($event, $type, $oldValues, $newValues);
         }
     }
-
+    
+    /**
+     * Format resume-related activities
+     */
+    private function formatResumeActivity($event, $oldValues, $newValues)
+    {
+        switch ($event) {
+            case 'created':
+                return 'Created a new Resume';
+                
+            case 'updated':
+                return 'Updated Resume details';
+                
+            case 'deleted':
+                return 'Deleted a Resume';
+                
+            default:
+                return "Performed {$event} action on Resume";
+        }
+    }
+    
     /**
      * Format subscription-related activities
      */
