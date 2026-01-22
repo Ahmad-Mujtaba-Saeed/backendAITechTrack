@@ -9,10 +9,10 @@ docker compose up -d --build {for build again}
 
 docker compose exec app [Command]
 
-docker exec -it backend_app bash {to open bash and run artisan commands}
+docker exec -it hms_backend_app bash {to open bash and run artisan commands}
 
-http://localhost:8085  //backend url 
-http://localhost:8086/index.php //db url
+http://localhost:8985  //backend url 
+http://localhost:8986/index.php //db url
 
 
 DB_CONNECTION=mysql

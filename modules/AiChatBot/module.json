@@ -1,9 +1,0 @@
-{
-  "name": "AiChatBot",
-  "enabled": true,
-  "version": "1.0.0",
-  "description": "AiChatBot management module",
-  "providers": [
-    "Modules\\AiChatBot\\ModuleServiceProvider"
-  ]
-}
