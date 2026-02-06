@@ -24,6 +24,9 @@ class ChatBotController extends Controller
         $validated = $request->validate([
             'message' => 'required|string',
             'thread_id' => 'nullable|string',
+            'code' => 'nullable|string',
+            'mode' => 'nullable|string',
+            'selections' => 'nullable|array',
         ]);
 
         $user = auth()->user();
@@ -34,17 +37,45 @@ class ChatBotController extends Controller
         );
 
         try {
+            Log::info('Sending request to AI service', [
+                'endpoint' => 'http://host.docker.internal:8950/chat',
+                'user_id' => $user->id ?? null,
+                'thread_id' => $validated['thread_id'] ?? null,
+                'mode' => $validated['mode'] ?? null,
+                'selections' => $validated['selections'] ?? null,
+                'selections_count' => is_array($validated['selections'] ?? null) ? count($validated['selections']) : 0,
+                'selections_meta' => collect($validated['selections'] ?? [])->map(function ($s) {
+                    return [
+                        'filePath' => $s['filePath'] ?? null,
+                        'fileName' => $s['fileName'] ?? null,
+                        'lineRange' => $s['lineRange'] ?? null,
+                        'startLine' => $s['startLine'] ?? null,
+                        'endLine' => $s['endLine'] ?? null,
+                        'label' => $s['label'] ?? null,
+                    ];
+                })->values()->all(),
+            ]);
+
             $response = Http::timeout(120)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])
-                ->post('http://host.docker.internal:8940/chat', [
+                ->post('http://host.docker.internal:8950/chat', [
                     'message' => $validated['message'],
                     'thread_id' => $validated['thread_id'] ?? null,
+                    'code' => $validated['code'] ?? null,
+                    'mode' => $validated['mode'] ?? null,
+                    'selections' => $validated['selections'] ?? [],
                     'user_id' => $user->id ?? null,
                     'agent_token' => $agentToken,
                 ]);
 
+            Log::info('AI service response received', [
+                'status' => $response->status(),
+                'successful' => $response->successful(),
+                'has_actions' => (bool) (($response->json()['actions'] ?? null) && is_array($response->json()['actions'])),
+                'actions_count' => is_array($response->json()['actions'] ?? null) ? count($response->json()['actions']) : 0,
+            ]);
 
             if (!$response->successful()) {
                 return response()->json([
@@ -96,7 +127,7 @@ class ChatBotController extends Controller
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])
-                ->post('http://host.docker.internal:8940/chat/resume', [
+                ->post('http://host.docker.internal:8950/chat/resume', [
                     'decision' => $validated['decision'],
                     'thread_id' => $validated['thread_id'],
                     'user_id' => $user->id ?? null,

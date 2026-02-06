@@ -20,7 +20,6 @@ class UserController extends Controller
     public function ProfileSettings(Request $request){
         $request->validate([
             "name" => "sometimes|string|max:100|min:3",
-            "phone" => "sometimes|string|max:200",
             "email" => "sometimes|email|unique:users,email," . auth()->id(),
             "profile_img" => "sometimes|image|mimes:jpeg,png,jpg,gif|max:2048",
             "bio" => "nullable|string|max:300",
@@ -35,10 +34,6 @@ class UserController extends Controller
         // Update basic info
         if ($request->has('name')) {
             $user->name = $request->name;
-        }
-
-        if ($request->has('phone')) {
-            $user->phone = $request->phone;
         }
         
         if ($request->has('bio')) {

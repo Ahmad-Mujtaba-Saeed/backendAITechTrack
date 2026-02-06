@@ -21,7 +21,6 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:100|min:3',
-            'phone' => 'required|string|max:40|min:2|unique:users',
             'email' => 'required|string|email|max:100|unique:users',
             'password' => 'required|string|min:8|max:18|confirmed',
         ]);
@@ -35,7 +34,6 @@ class AuthController extends Controller
             $stripeCustomer = Customer::create([
                 'email' => $request->email,
                 'name' => $request->name,
-                'phone' => $request->phone,
                 'metadata' => [
                     'user_type' => 'registered_user'
                 ]
@@ -49,7 +47,6 @@ class AuthController extends Controller
 
         $user = User::create([
             'name' => $request->name,
-            'phone' => $request->phone,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'stripe_customer_id' => $stripeCustomer ? $stripeCustomer->id : null,

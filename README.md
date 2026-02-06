@@ -52,7 +52,7 @@ docker compose up -d --build
 ```bash
 docker compose exec app bash
 # or
-docker exec -it backend_app bash
+docker exec -it ams_extension_backend bash
 ```
 
 ## Database Configuration

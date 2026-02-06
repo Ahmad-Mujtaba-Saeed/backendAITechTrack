@@ -14,8 +14,7 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->string('stripe_customer_id')->nullable()->after('password');
             $table->string('firebase_uid')->nullable()->after('stripe_customer_id');
-            $table->string('phone')->unique()->after('firebase_uid');
-            $table->string('profile_img')->nullable()->after('phone');
+            $table->string('profile_img')->nullable()->after('firebase_uid');
         });
     }
 
@@ -28,7 +27,6 @@ return new class extends Migration
             $table->dropColumn([
                 'stripe_customer_id',
                 'firebase_uid',
-                'phone',
                 'profile_img'
             ]);
         });

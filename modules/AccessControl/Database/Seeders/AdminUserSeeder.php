@@ -19,7 +19,6 @@ class AdminUserSeeder extends Seeder
             ['email' => 'admin@admin.com'],
             [
                 'name' => 'Admin',
-                'phone' => '1234567890',
                 'password' => Hash::make('AIProj@techtrack'),
                 'email_verified_at' => now(),
             ]

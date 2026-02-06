@@ -19,7 +19,6 @@ class User extends Authenticatable implements Auditable
         'name',
         'email',
         'password',
-        'phone',
         'stripe_customer_id',
         'firebase_uid',
         'profile_img',
