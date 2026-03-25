@@ -70,55 +70,48 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|string|email|max:100',
-            'password' => 'required|string|min:8|max:18',
-        ]);
+{    
+    // Validate input
+    $request->validate([
+        'login' => 'required|string|max:100', // can be email or username
+        'password' => 'required|string|min:8|max:18',
+    ]);
 
-        $loginData = [
-            'email' => $request->email,
-            'password' => $request->password,
-        ];
+    $loginInput = $request->login;
+    $password = $request->password;
 
-        $user = User::where('email', $request->email)->first();
+    // Determine if input is email or username
+    $fieldType = filter_var($loginInput, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
+    // Attempt login
+    $loginSuccessful = Auth::attempt([$fieldType => $loginInput, 'password' => $password]);
 
-
-        $loginSuccessful = Auth::attempt(['email' => $request->email, 'password' => $request->password]);
-        
-        // Log the login attempt
-        // $this->logLoginAttempt($request, $user, $loginSuccessful);
-        
-        // Get user by email to log the attempt even if login fails
-        $user = User::where('email', $request->email)->first();
-
-        if (!$loginSuccessful) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Invalid credentials',
-            ], 401);
-        }
-
-        $user = Auth::user();
-
-        if(!$user->is_active){
-            return response()->json([
-                'status' => false,
-                'message' => 'User is disabled by admin',
-            ], 401);
-        }
-        
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+    if (!$loginSuccessful) {
         return response()->json([
-            'status' => true,
-            'message' => 'User logged in successfully',
-            'user' => $user,
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-        ]);
+            'status' => false,
+            'message' => 'Invalid credentials',
+        ], 401);
     }
+
+    $user = Auth::user();
+
+    if (!$user->is_active) {
+        return response()->json([
+            'status' => false,
+            'message' => 'User is disabled by admin',
+        ], 401);
+    }
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'status' => true,
+        'message' => 'User logged in successfully',
+        'user' => $user,
+        'access_token' => $token,
+        'token_type' => 'Bearer',
+    ]);
+}
 
 
     protected function logLoginAttempt(Request $request, $user, $successful)
