@@ -25,12 +25,7 @@ class StripeWebhookController extends Controller
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
         $secret = env('STRIPE_WEBHOOK_SECRET');
- \Log::info('Stripe Debug', [
-        'secret' => $secret,
-        'secret_length' => strlen($secret ?? ''),
-        'signature' => $sigHeader,
-        'payload_length' => strlen($payload),
-    ]);
+ 
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $secret);
         } catch (\Exception $e) {
@@ -46,7 +41,6 @@ class StripeWebhookController extends Controller
                     $email = $invoice->customer_email;
 
                     $user = User::where('email', $email)->first();
-
                     $price_id = $invoice->lines->data[0]->pricing->price_details->price;
 
                     $plan = Plan::where('stripe_price_id', $price_id)->first();
@@ -111,13 +105,22 @@ class StripeWebhookController extends Controller
                     $customer = \Stripe\Customer::retrieve($customerId, []);
                     $customer_email = $customer->email;
 
-                    $user = User::where('email', $customer_email)->first();
-                    if (!$user) {
-                        Log::warning("Stripe webhook: User not found with email {$customer_email}");
-                        return response()->json(['error' => 'User not found'], 404);
-                    }
+                   $user = User::where('email', $customer_email)->first();
 
-                    \DB::beginTransaction();
+if (!$user && !empty($customerId)) {
+    $user = User::where('stripe_customer_id', $customerId)->first();
+}
+
+if (!$user) {
+    Log::warning('Stripe webhook: User not found', [
+        'customer_id' => $customerId ?? null,
+        'email' => $customer_email ?? null,
+    ]);
+
+    // Never return 404 to Stripe.
+    return response()->json(['received' => true], 200);
+}
+                    \Illuminate\Support\Facades\DB::beginTransaction();
 
                     // Get the first subscription item (since there's only one)
                     $subscriptionItem = $subscription->items->data[0];
@@ -193,13 +196,23 @@ class StripeWebhookController extends Controller
                     $customer = \Stripe\Customer::retrieve($customerId, []);
                     $customer_email = $customer->email;
 
-                    $user = User::where('email', $customer_email)->first();
-                    if (!$user) {
-                        Log::warning("Stripe webhook: User not found with email {$customer_email}");
-                        return response()->json(['error' => 'User not found'], 404);
-                    }
+                   $user = User::where('email', $customer_email)->first();
 
-                    \DB::beginTransaction();
+if (!$user && !empty($customerId)) {
+    $user = User::where('stripe_customer_id', $customerId)->first();
+}
+
+if (!$user) {
+    Log::warning('Stripe webhook: User not found', [
+        'customer_id' => $customerId ?? null,
+        'email' => $customer_email ?? null,
+    ]);
+
+    // Never return 404 to Stripe.
+    return response()->json(['received' => true], 200);
+}
+
+                    \Illuminate\Support\Facades\DB::beginTransaction();
 
                     // Get the first subscription item (since there's only one)
                     $subscriptionItem = $subscription->items->data[0];
@@ -249,7 +262,7 @@ class StripeWebhookController extends Controller
                     ]);
 
                     $user->save();
-                    \DB::commit();
+                    \Illuminate\Support\Facades\DB::commit();
 
                     break;
 
@@ -257,12 +270,21 @@ class StripeWebhookController extends Controller
                     $session = $event->data->object;
                     $customer_email = $session->customer_email;
 
-                    $user = User::where('email', $customer_email)->first();
-                    if (!$user) {
-                        Log::warning("Stripe webhook: User not found with email {$customer_email}");
-                        return response()->json(['error' => 'User not found'], 404);
-                    }
+                  $user = User::where('email', $customer_email)->first();
 
+if (!$user && !empty($customerId)) {
+    $user = User::where('stripe_customer_id', $customerId)->first();
+}
+
+if (!$user) {
+    Log::warning('Stripe webhook: User not found', [
+        'customer_id' => $customerId ?? null,
+        'email' => $customer_email ?? null,
+    ]);
+
+    // Never return 404 to Stripe.
+    return response()->json(['received' => true], 200);
+}
                     if (isset($session->metadata->type) && $session->metadata->type == 'ticket') {
                         $eventId = $session->metadata->event_id;
                         $ticketTypeId = $session->metadata->ticket_type_id;
