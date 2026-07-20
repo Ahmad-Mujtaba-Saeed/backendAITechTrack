@@ -212,11 +212,11 @@ class ResumeController extends Controller
     }
 
     public function parseResumeOCRPyScript(Request $request)
-    {
-
-        $request->validate([
-            'file' => 'required|mimes:pdf,png,jpg,jpeg,docx'
-        ]);
+    {     
+              $request->validate([
+                  'file' => 'required|mimes:pdf,png,jpg,jpeg,docx'
+              ]);
+            
         // return ("new - OCR script");
         $model = $request->model ?? 'gpt-4o-mini';
         $file = $request->file('file');
@@ -229,6 +229,7 @@ class ResumeController extends Controller
 
         if ($extension == 'docx') {
             // Handle DOCX files using PhpOffice\PhpWord
+            Log::info('DOCX processing started');
             try {
                 $phpWord = \PhpOffice\PhpWord\IOFactory::load($path);
                 $text = '';

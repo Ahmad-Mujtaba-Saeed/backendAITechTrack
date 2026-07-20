@@ -12,13 +12,15 @@ use Stripe\Stripe;
 use Stripe\Customer;
 use Modules\AccessControl\Models\Role;
 
-
+use Illuminate\Support\Facades\Log;
 
 
 class AuthController extends Controller
 {
     public function register(Request $request)
-    {
+    { \Log::error('Stripe customer creation failed during registration', [
+    'request' => $request->all(),
+]);
         $request->validate([
             'name' => 'required|string|max:100|min:3',
             'email' => 'required|string|email|max:100|unique:users',
@@ -70,14 +72,14 @@ class AuthController extends Controller
     }
 
     public function login(Request $request)
-{    
+{   
     // Validate input
     $request->validate([
-        'login' => 'required|string|max:100', // can be email or username
+        'email' => 'required|string|max:100', // can be email or username
         'password' => 'required|string|min:8|max:18',
     ]);
 
-    $loginInput = $request->login;
+    $loginInput = $request->email;
     $password = $request->password;
 
     // Determine if input is email or username
