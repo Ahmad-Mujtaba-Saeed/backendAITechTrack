@@ -100,106 +100,103 @@ class StripeWebhookController extends Controller
 
                     break;
 
-             case 'customer.subscription.created':
+                case 'customer.subscription.created':
+                    $subscription = $event->data->object;
+                    $customerId = $subscription->customer;
+                    \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
+                    $customer = \Stripe\Customer::retrieve($customerId, []);
+                    $customer_email = $customer->email;
 
-    $subscription = $event->data->object;
-    dd('Step 1', $subscription);
+                   $user = User::where('email', $customer_email)->first();
 
-    $customerId = $subscription->customer;
-    dd('Step 2', $customerId);
+if (!$user && !empty($customerId)) {
+    $user = User::where('stripe_customer_id', $customerId)->first();
+}
 
-    \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
-    dd('Step 3');
+if (!$user) {
+    Log::warning('Stripe webhook: User not found', [
+        'customer_id' => $customerId ?? null,
+        'email' => $customer_email ?? null,
+    ]);
 
-    $customer = \Stripe\Customer::retrieve($customerId, []);
-    dd('Step 4', $customer);
+    // Never return 404 to Stripe.
+    return response()->json(['received' => true], 200);
+}
+                    \DB::beginTransaction();
 
-    $customer_email = $customer->email;
-    dd('Step 5', $customer_email);
+                  $subscriptionItem = $subscription->items->data[0];
 
-    $user = User::where('email', $customer_email)->first();
-    dd('Step 6', $user);
+$price = $subscriptionItem->price;
 
-    if (!$user && !empty($customerId)) {
-        $user = User::where('stripe_customer_id', $customerId)->first();
-        dd('Step 7', $user);
-    }
+$plan = Plan::where('stripe_price_id', $price->id)->first();
 
-    if (!$user) {
-        dd('Step 8 - User Not Found');
-    }
+dd([
+    'price_id' => $price->id,
+    'plan' => $plan,
+    'plans_in_db' => Plan::select('id', 'name', 'stripe_price_id')->get(),
+]);
 
-    \DB::beginTransaction();
-    dd('Step 9');
+$invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
+                   
 
-    $subscriptionItem = $subscription->items->data[0];
-    dd('Step 10', $subscriptionItem);
+                    // Handle trial end date (can be null if no trial)
+                    $trialEndsAt = $subscription->trial_end
+                        ? \Carbon\Carbon::createFromTimestamp($subscription->trial_end)
+                        : null;
 
-    $price = $subscriptionItem->price;
-    dd('Step 11', $price);
+                    $subscriptionEndsAt = $subscriptionItem->current_period_end
+                        ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_end)
+                        : null;
 
-    $plan = Plan::where('stripe_price_id', $price->id)->first();
-    dd('Step 12', $plan);
+                    $subscriptionStartsAt = $subscriptionItem->current_period_start
+                        ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_start)
+                        : null;
 
-    $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
-    dd('Step 13', $invoice);
 
-    $trialEndsAt = $subscription->trial_end
-        ? \Carbon\Carbon::createFromTimestamp($subscription->trial_end)
-        : null;
-    dd('Step 14', $trialEndsAt);
+                    $subscriptionModel = Subscription::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'sub_id' => $subscription->id,
+                        ],
+                        [
+                            'name' => $plan->name,
+                            'type' => 'membership',
+                            'type_id' => $plan->id,
+                            'cus_id' => $customerId,
+                            'trial_ends_at' => $trialEndsAt,
+                            'starts_at' => $subscriptionStartsAt,
+                            'ends_at' => $subscriptionEndsAt,
+                            'status' => $subscription->status,
+                        ]
+                    );
 
-    $subscriptionEndsAt = $subscriptionItem->current_period_end
-        ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_end)
-        : null;
-    dd('Step 15', $subscriptionEndsAt);
+                    // Mark in user's record that they've used trial
+                    $user->trial_used = true;
+                    $user->trial_used_at = now();
+                    $user->save();
 
-    $subscriptionStartsAt = $subscriptionItem->current_period_start
-        ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_start)
-        : null;
-    dd('Step 16', $subscriptionStartsAt);
+                    // Send welcome email
+                    try {
+                        Mail::to($user->email)->send(new SubscriptionWelcomeMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt));
+                    } catch (\Exception $e) {
+                        // Log the error but don't fail the webhook
+                        Log::error('Failed to send welcome email: ' . $e->getMessage());
+                    }
 
-    $subscriptionModel = Subscription::updateOrCreate(
-        [
-            'user_id' => $user->id,
-            'sub_id' => $subscription->id,
-        ],
-        [
-            'name' => $plan->name,
-            'type' => 'membership',
-            'type_id' => $plan->id,
-            'cus_id' => $customerId,
-            'trial_ends_at' => $trialEndsAt,
-            'starts_at' => $subscriptionStartsAt,
-            'ends_at' => $subscriptionEndsAt,
-            'status' => $subscription->status,
-        ]
-    );
-    dd('Step 17', $subscriptionModel);
+                    try {
+                        $adminUser = User::whereHas('roles', function($query) {
+                            $query->where('slug', 'admin');
+                        })->first();
+                        Mail::to($adminUser->email)->send(new NewSubscriptionAdminMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt));
+                    } catch (\Exception $e) {
+                        // Log the error but don't fail the webhook
+                        Log::error('Failed to send welcome email: ' . $e->getMessage());
+                    }
 
-    $user->trial_used = true;
-    $user->trial_used_at = now();
-    $user->save();
-    dd('Step 18');
+                    \DB::commit();
 
-    Mail::to($user->email)->send(
-        new SubscriptionWelcomeMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt)
-    );
-    dd('Step 19');
+                    break;
 
-    $adminUser = User::whereHas('roles', function ($query) {
-        $query->where('slug', 'admin');
-    })->first();
-    dd('Step 20', $adminUser);
-
-    Mail::to($adminUser->email)->send(
-        new NewSubscriptionAdminMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt)
-    );
-    dd('Step 21');
-
-    \DB::commit();
-    dd('Step 22 - Completed');
-    
                 case 'customer.subscription.updated':
                     $subscription = $event->data->object;
                     $customerId = $subscription->customer;
