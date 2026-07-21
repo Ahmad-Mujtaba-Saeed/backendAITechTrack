@@ -46,24 +46,54 @@ class StripeController extends Controller
         }
     }
 
-
 public function createSubscriptionSession(Request $request, $planId)
 {
+    \Log::info('START createSubscriptionSession', [
+        'user_id' => Auth::id(),
+        'plan_id' => $planId,
+        'request' => $request->all()
+    ]);
+
     $plan = Plan::find($planId);
+
     if (!$plan || $plan->is_active == 0) {
+
+        \Log::error('Plan not found or inactive', [
+            'plan_id' => $planId
+        ]);
+
         return response()->json([
             'error' => 'Plan not found or inactive plan',
         ], 400);
     }
 
+
+    \Log::info('Plan found', [
+        'plan_id' => $plan->id,
+        'plan_name' => $plan->name,
+        'stripe_price_id' => $plan->stripe_price_id
+    ]);
+
+
     Stripe::setApiKey(config('services.stripe.secret'));
-    
+
     $user = Auth::user();
+
+
+    \Log::info('Authenticated user', [
+        'user_id' => $user->id,
+        'email' => $user->email,
+        'stripe_customer_id' => $user->stripe_customer_id
+    ]);
+
+
     $customerId = $user->stripe_customer_id;
-    
-    // Create Stripe customer if doesn't exist
+
+
     if (!$customerId) {
+
         try {
+
             $customer = \Stripe\Customer::create([
                 'email' => $user->email,
                 'name' => $user->name,
@@ -72,98 +102,177 @@ public function createSubscriptionSession(Request $request, $planId)
                     'user_id' => $user->id
                 ]
             ]);
+
             $customerId = $customer->id;
+
             $user->stripe_customer_id = $customerId;
             $user->save();
+
+
+            \Log::info('Stripe customer created', [
+                'customer_id' => $customerId,
+                'user_id' => $user->id
+            ]);
+
+
         } catch (\Exception $e) {
-            \Log::error('Failed to create Stripe customer', [
-                'user_id' => $user->id,
+
+            \Log::error('Stripe customer creation failed', [
                 'error' => $e->getMessage()
             ]);
+
             return response()->json([
-                'error' => 'Failed to create customer',
-                'message' => $e->getMessage()
-            ], 500);
+                'error'=>'Failed customer creation'
+            ],500);
         }
     }
 
-    // Check if customer already has any subscriptions
+
+
     $hasExistingSubscription = false;
     $hasUsedTrial = false;
+    $hasPaymentMethods = false;
+
+
 
     try {
-        // Get customer's subscriptions
+
         $subscriptions = \Stripe\Subscription::all([
-            'customer' => $customerId,
-            'status' => 'all', // Include past subscriptions
-            'limit' => 10
+            'customer'=>$customerId,
+            'status'=>'all',
+            'limit'=>10
         ]);
 
-        foreach ($subscriptions->data as $subscription) {
-            // If customer has any active or past due subscription, they've used the service
-            if (in_array($subscription->status, ['active', 'past_due', 'canceled', 'incomplete'])) {
-                $hasExistingSubscription = true;
-                
-                // Check if this subscription had a trial
-                if ($subscription->trial_start !== null) {
-                    $hasUsedTrial = true;
-                    break;
-                }
-            }
-        }
 
-        // Alternative: Check if customer has any payment methods (indicates they've paid before)
+        \Log::info('Stripe existing subscriptions', [
+            'customer_id'=>$customerId,
+            'subscriptions'=>$subscriptions->data
+        ]);
+
+
+
         $paymentMethods = \Stripe\PaymentMethod::all([
-            'customer' => $customerId,
-            'type' => 'card',
+            'customer'=>$customerId,
+            'type'=>'card'
         ]);
-        
-        $hasPaymentMethods = count($paymentMethods->data) > 0;
 
-    } catch (\Exception $e) {
-        \Log::error('Error checking customer subscription history', [
-            'customer_id' => $customerId,
-            'error' => $e->getMessage()
+
+        $hasPaymentMethods = count($paymentMethods->data)>0;
+
+
+        \Log::info('Stripe payment methods',[
+            'count'=>count($paymentMethods->data)
         ]);
+
+
+
+    } catch(\Exception $e){
+
+        \Log::error('Stripe history check failed',[
+            'error'=>$e->getMessage()
+        ]);
+
     }
 
-    // Determine if free trial should be offered
-    $shouldOfferTrial = $request->isFreeTrial && 
-                       !$hasUsedTrial && 
-                       !$hasExistingSubscription && 
-                       !$hasPaymentMethods;
+
+
+    $shouldOfferTrial =
+        $request->isFreeTrial &&
+        !$hasUsedTrial &&
+        !$hasExistingSubscription &&
+        !$hasPaymentMethods;
+
+
+
+    \Log::info('Trial decision',[
+        'isFreeTrial'=>$request->isFreeTrial,
+        'hasUsedTrial'=>$hasUsedTrial,
+        'hasExistingSubscription'=>$hasExistingSubscription,
+        'hasPaymentMethods'=>$hasPaymentMethods,
+        'final_trial'=>$shouldOfferTrial
+    ]);
+
+
 
     $subscriptionData = [
-        'metadata' => [
-            'type' => 'subscription',
-            'user_id' => Auth::id() ?? null,
-        ],
+        'metadata'=>[
+            'type'=>'subscription',
+            'user_id'=>$user->id,
+            'plan_id'=>$plan->id
+        ]
     ];
 
-    // Only add trial if eligible
-    if ($shouldOfferTrial) {
-        $subscriptionData['trial_period_days'] = 7;
+
+
+    if($shouldOfferTrial){
+        $subscriptionData['trial_period_days']=7;
     }
 
-    $session = Session::create([
-        'payment_method_types' => ['card'],
-        'mode' => 'subscription',
-        'customer' => $customerId,
-        'line_items' => [[
-            'price' => $plan->stripe_price_id,
-            'quantity' => 1,
-        ]],
-        'allow_promotion_codes' => true,
-        'subscription_data' => $subscriptionData,
-        'success_url' => env('Frontend_URL_LIVE') . '/welcome?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => env('Frontend_URL_LIVE'),
-    ]);
+
+
+    try {
+
+
+        $session = Session::create([
+
+            'payment_method_types'=>['card'],
+
+            'mode'=>'subscription',
+
+            'customer'=>$customerId,
+
+            'line_items'=>[
+                [
+                    'price'=>$plan->stripe_price_id,
+                    'quantity'=>1
+                ]
+            ],
+
+            'allow_promotion_codes'=>true,
+
+            'subscription_data'=>$subscriptionData,
+
+            'success_url'=>env('Frontend_URL_LIVE').'/welcome?session_id={CHECKOUT_SESSION_ID}',
+
+            'cancel_url'=>env('Frontend_URL_LIVE'),
+
+        ]);
+
+
+
+        \Log::info('Stripe checkout session created',[
+            'session_id'=>$session->id,
+            'customer'=>$customerId,
+            'subscription'=>$session->subscription,
+            'metadata'=>$session->subscription_data ?? null
+        ]);
+
+
+
+    } catch(\Exception $e){
+
+        \Log::error('Checkout session failed',[
+            'error'=>$e->getMessage()
+        ]);
+
+        return response()->json([
+            'error'=>$e->getMessage()
+        ],500);
+
+    }
+
+
 
     return response()->json([
-        'sessionId' => $session->id,
-        'checkoutUrl' => $session->url,
-        'hasTrial' => $shouldOfferTrial,
+
+        'sessionId'=>$session->id,
+
+        'checkoutUrl'=>$session->url,
+
+        'hasTrial'=>$shouldOfferTrial
+
     ]);
+
 }
 
     public function cancelSubscription(Request $request)
