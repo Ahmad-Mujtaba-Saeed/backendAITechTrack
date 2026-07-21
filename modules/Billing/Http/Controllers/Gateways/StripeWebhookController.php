@@ -260,12 +260,14 @@ if (!$user) {
 
                 case 'checkout.session.completed':
                     $session = $event->data->object;
-                    $customer_email = $session->customer_email;
-Log::info('Checkout Session', [
-    'customer_email' => $session->customer_email,
-    'customer'       => $session->customer,
-    'customer_details' => $session->customer_details,
+                   $customer_email = $session->customer_details->email ?? null;
+
+Log::info('Customer Email', [
+    'email' => $customer_email,
 ]);
+
+$user = User::where('email', $customer_email)->first();
+
                     $user = User::where('email', $customer_email)->first();
                     if (!$user) {
                         Log::warning("Stripe webhook: User not found with email {$customer_email}");
