@@ -35,71 +35,35 @@ class StripeWebhookController extends Controller
 
         try {
             switch ($event->type) {
-             case 'invoice.payment_succeeded':
+                case 'invoice.payment_succeeded':
+                    $invoice = $event->data->object;
 
-    Log::info('========== invoice.payment_succeeded START ==========');
+                    $email = $invoice->customer_email;
 
-    try {
+                    $user = User::where('email', $email)->first();
+                    
+                    $price_id = $invoice->lines->data[0]->pricing->price_details->price;
 
-        $invoice = $event->data->object;
-        Log::info('Invoice received', ['invoice_id' => $invoice->id]);
+                    $plan = Plan::where('stripe_price_id', $price_id)->first();
 
-        $email = $invoice->customer_email;
-        Log::info('Customer Email', ['email' => $email]);
+                    $subscriptionStripeId = $invoice->subscription
+                        ?? $invoice->parent?->subscription_details?->subscription
+                        ?? $invoice->lines->data[0]->parent?->subscription_item_details?->subscription
+                        ?? null;
 
-        $user = User::where('email', $email)->first();
-        Log::info('User lookup', ['user' => $user]);
+                    $payment = Payment::create([
+                        'user_id' => $user->id,
+                        'related_type' => 'membership',
+                        'related_type_id' => $plan->id,
+                        'subscription_id' => $subscriptionStripeId,
+                        'payment_amount' => $invoice->total / 100,  // Convert from cents to dollars
+                        'payment_transaction_id' => $invoice->id,
+                        'payment_gateway' => 'stripe',
+                        'payment_status' => $invoice->status,
+                        'payment_currency' => strtoupper($invoice->currency),  // Ensure uppercase currency code
+                    ]);
 
-        if (!$user) {
-            Log::warning('User not found');
-            break;
-        }
-
-        $price_id = $invoice->lines->data[0]->pricing->price_details->price;
-        Log::info('Price ID', ['price_id' => $price_id]);
-
-        $plan = Plan::where('stripe_price_id', $price_id)->first();
-        Log::info('Plan', ['plan' => $plan]);
-
-        $subscriptionStripeId = $invoice->subscription
-            ?? $invoice->parent?->subscription_details?->subscription
-            ?? $invoice->lines->data[0]->parent?->subscription_item_details?->subscription
-            ?? null;
-
-        Log::info('Subscription ID', [
-            'subscription_id' => $subscriptionStripeId
-        ]);
-
-        $payment = Payment::create([
-            'user_id' => $user->id,
-            'related_type' => 'membership',
-            'related_type_id' => $plan?->id,
-            'subscription_id' => $subscriptionStripeId,
-            'payment_amount' => $invoice->total / 100,
-            'payment_transaction_id' => $invoice->id,
-            'payment_gateway' => 'stripe',
-            'payment_status' => $invoice->status,
-            'payment_currency' => strtoupper($invoice->currency),
-        ]);
-
-        Log::info('Payment Created', [
-            'payment_id' => $payment->id
-        ]);
-
-    } catch (\Exception $e) {
-
-        Log::error('invoice.payment_succeeded ERROR', [
-            'message' => $e->getMessage(),
-            'line' => $e->getLine(),
-            'file' => $e->getFile(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
-    }
-
-    Log::info('========== invoice.payment_succeeded END ==========');
-
-    break;
+                    break;
 
                 case 'invoice.payment_failed':
                     $invoice = $event->data->object;
@@ -136,113 +100,64 @@ class StripeWebhookController extends Controller
 
                     break;
 
-               case 'customer.subscription.created':
-
-Log::info('========== customer.subscription.created START ==========');
-
-try {
+             case 'customer.subscription.created':
 
     $subscription = $event->data->object;
-    Log::info('Subscription object received', [
-        'subscription_id' => $subscription->id
-    ]);
+    dd('Step 1', $subscription);
 
     $customerId = $subscription->customer;
-    Log::info('Customer ID', ['customer_id' => $customerId]);
+    dd('Step 2', $customerId);
 
     \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
-    Log::info('Stripe key set');
+    dd('Step 3');
 
     $customer = \Stripe\Customer::retrieve($customerId, []);
-    Log::info('Customer retrieved', [
-        'customer' => $customer
-    ]);
+    dd('Step 4', $customer);
 
     $customer_email = $customer->email;
-    Log::info('Customer Email', [
-        'email' => $customer_email
-    ]);
+    dd('Step 5', $customer_email);
 
     $user = User::where('email', $customer_email)->first();
-    Log::info('User lookup by email', [
-        'user' => $user
-    ]);
+    dd('Step 6', $user);
 
     if (!$user && !empty($customerId)) {
-
-        Log::info('Searching user by stripe_customer_id');
-
         $user = User::where('stripe_customer_id', $customerId)->first();
-
-        Log::info('User by stripe_customer_id', [
-            'user' => $user
-        ]);
+        dd('Step 7', $user);
     }
 
     if (!$user) {
-
-        Log::warning('User NOT FOUND', [
-            'customer_id' => $customerId,
-            'email' => $customer_email
-        ]);
-
-        return response()->json(['received' => true], 200);
+        dd('Step 8 - User Not Found');
     }
 
-    Log::info('Beginning DB Transaction');
-
-    DB::beginTransaction();
+    \DB::beginTransaction();
+    dd('Step 9');
 
     $subscriptionItem = $subscription->items->data[0];
-    Log::info('Subscription Item', [
-        'item' => $subscriptionItem
-    ]);
+    dd('Step 10', $subscriptionItem);
 
     $price = $subscriptionItem->price;
-
-    Log::info('Stripe Price', [
-        'price_id' => $price->id
-    ]);
+    dd('Step 11', $price);
 
     $plan = Plan::where('stripe_price_id', $price->id)->first();
-
-    Log::info('Plan Found', [
-        'plan' => $plan
-    ]);
-
-    if (!$plan) {
-        Log::warning('Plan not found');
-    }
+    dd('Step 12', $plan);
 
     $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
-
-    Log::info('Latest Invoice', [
-        'invoice_id' => $invoice->id
-    ]);
+    dd('Step 13', $invoice);
 
     $trialEndsAt = $subscription->trial_end
         ? \Carbon\Carbon::createFromTimestamp($subscription->trial_end)
         : null;
-
-    Log::info('Trial Ends', [
-        'trial_end' => $trialEndsAt
-    ]);
+    dd('Step 14', $trialEndsAt);
 
     $subscriptionEndsAt = $subscriptionItem->current_period_end
         ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_end)
         : null;
-
-    Log::info('Subscription Ends', [
-        'ends_at' => $subscriptionEndsAt
-    ]);
+    dd('Step 15', $subscriptionEndsAt);
 
     $subscriptionStartsAt = $subscriptionItem->current_period_start
         ? \Carbon\Carbon::createFromTimestamp($subscriptionItem->current_period_start)
         : null;
-
-    Log::info('Subscription Starts', [
-        'starts_at' => $subscriptionStartsAt
-    ]);
+    dd('Step 16', $subscriptionStartsAt);
 
     $subscriptionModel = Subscription::updateOrCreate(
         [
@@ -260,86 +175,31 @@ try {
             'status' => $subscription->status,
         ]
     );
-
-    Log::info('Subscription Saved', [
-        'subscription_model' => $subscriptionModel
-    ]);
+    dd('Step 17', $subscriptionModel);
 
     $user->trial_used = true;
     $user->trial_used_at = now();
     $user->save();
+    dd('Step 18');
 
-    Log::info('User Updated');
+    Mail::to($user->email)->send(
+        new SubscriptionWelcomeMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt)
+    );
+    dd('Step 19');
 
-    try {
+    $adminUser = User::whereHas('roles', function ($query) {
+        $query->where('slug', 'admin');
+    })->first();
+    dd('Step 20', $adminUser);
 
-        Mail::to($user->email)->send(
-            new SubscriptionWelcomeMail(
-                $user,
-                $plan,
-                $subscriptionEndsAt,
-                $subscriptionStartsAt
-            )
-        );
+    Mail::to($adminUser->email)->send(
+        new NewSubscriptionAdminMail($user, $plan, $subscriptionEndsAt, $subscriptionStartsAt)
+    );
+    dd('Step 21');
 
-        Log::info('Welcome Email Sent');
-
-    } catch (\Exception $e) {
-
-        Log::error('Welcome Email Failed', [
-            'message' => $e->getMessage()
-        ]);
-
-    }
-
-    try {
-
-        $adminUser = User::whereHas('roles', function ($query) {
-            $query->where('slug', 'admin');
-        })->first();
-
-        Log::info('Admin User', [
-            'admin' => $adminUser
-        ]);
-
-        Mail::to($adminUser->email)->send(
-            new NewSubscriptionAdminMail(
-                $user,
-                $plan,
-                $subscriptionEndsAt,
-                $subscriptionStartsAt
-            )
-        );
-
-        Log::info('Admin Email Sent');
-
-    } catch (\Exception $e) {
-
-        Log::error('Admin Email Failed', [
-            'message' => $e->getMessage()
-        ]);
-
-    }
-
-    DB::commit();
-
-    Log::info('Transaction Committed');
-
-} catch (\Exception $e) {
-
-    DB::rollBack();
-
-    Log::error('customer.subscription.created ERROR', [
-        'message' => $e->getMessage(),
-        'line' => $e->getLine(),
-        'file' => $e->getFile(),
-        'trace' => $e->getTraceAsString(),
-    ]);
-}
-
-Log::info('========== customer.subscription.created END ==========');
-
-break;
+    \DB::commit();
+    dd('Step 22 - Completed');
+    
                 case 'customer.subscription.updated':
                     $subscription = $event->data->object;
                     $customerId = $subscription->customer;
