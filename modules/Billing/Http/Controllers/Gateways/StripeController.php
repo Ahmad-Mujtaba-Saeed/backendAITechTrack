@@ -144,12 +144,7 @@ public function createSubscriptionSession(Request $request, $planId)
     if ($shouldOfferTrial) {
         $subscriptionData['trial_period_days'] = 7;
     }
-\Log::info('Creating Stripe checkout session', [
-    'user_id' => Auth::id(),
-    'customer_id' => $customerId,
-    'plan_id' => $plan->id,
-    'price_id' => $plan->stripe_price_id,
-]);
+
     $session = Session::create([
         'payment_method_types' => ['card'],
         'mode' => 'subscription',

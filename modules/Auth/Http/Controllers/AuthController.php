@@ -148,12 +148,22 @@ class AuthController extends Controller
         }
     }
 
-    public function me(Request $request)
-    {
-        $user = $request->user();
-        $user->load('roles.permissions');
-        return response()->json($user);
-    }
+ public function me(Request $request)
+{
+    $user = $request->user();
+
+    $user->load('roles.permissions');
+
+    $subscription = \Modules\Billing\Models\Subscription::where('user_id', $user->id)
+        ->latest()
+        ->first();
+
+    return response()->json([
+        ...$user->toArray(),
+        'plan_id' => $subscription?->type_id,
+        'subscription' => $subscription
+    ]);
+}
 
     public function logout(Request $request)
     {
