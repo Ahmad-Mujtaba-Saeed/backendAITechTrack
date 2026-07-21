@@ -260,31 +260,18 @@ if (!$user) {
 
                 case 'checkout.session.completed':
                     $session = $event->data->object;
-                      Log::info('Checkout Session Data', [
-        'customer_email' => $session->customer_email,
-        'customer' => $session->customer,
-        'customer_details' => $session->customer_details,
-    ]);
                     $customer_email = $session->customer_email;
-$customer_email = $session->customer_email;
-
-if (empty($customer_email) && !empty($session->customer)) {
-    \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
-
-    $customer = \Stripe\Customer::retrieve($session->customer);
-
-    $customer_email = $customer->email;
-}
+Log::info('Checkout Session', [
+    'customer_email' => $session->customer_email,
+    'customer'       => $session->customer,
+    'customer_details' => $session->customer_details,
+]);
                     $user = User::where('email', $customer_email)->first();
-                  if (!$user) {
-    Log::warning('Stripe webhook: User not found', [
-        'email' => $customer_email,
-        'customer_id' => $session->customer,
-    ]);
+                    if (!$user) {
+                        Log::warning("Stripe webhook: User not found with email {$customer_email}");
+                        return response()->json(['error' => 'User not found'], 404);
+                    }
 
-    // Acknowledge the webhook so Stripe stops retrying.
-    return response()->json(['received' => true], 200);
-}
                     if (isset($session->metadata->type) && $session->metadata->type == 'ticket') {
                         $eventId = $session->metadata->event_id;
                         $ticketTypeId = $session->metadata->ticket_type_id;
