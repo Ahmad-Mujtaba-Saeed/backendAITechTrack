@@ -106,22 +106,13 @@ class StripeWebhookController extends Controller
                     \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
                     $customer = \Stripe\Customer::retrieve($customerId, []);
                     $customer_email = $customer->email;
-                    Log::info('Subscription Created', [
-    'customer_id' => $customerId,
-    'customer_email' => $customer_email,
-]);
 
                    $user = User::where('email', $customer_email)->first();
-Log::info('User By Email', [
-    'user_found' => $user ? true : false,
-    'user_id' => $user?->id,
-]);
+
 if (!$user && !empty($customerId)) {
     $user = User::where('stripe_customer_id', $customerId)->first();
 }
-Log::info('Trying Stripe Customer ID', [
-    'customer_id' => $customerId,
-]);
+
 if (!$user) {
     Log::warning('Stripe webhook: User not found', [
         'customer_id' => $customerId ?? null,
@@ -133,20 +124,14 @@ if (!$user) {
 }
                     \DB::beginTransaction();
 
-                  $subscriptionItem = $subscription->items->data[0];
+                    // Get the first subscription item (since there's only one)
+                    $subscriptionItem = $subscription->items->data[0];
+                    $plan = $subscriptionItem->plan;
+                    $price = $subscriptionItem->price;
 
-$price = $subscriptionItem->price;
+                    $plan = Plan::where('stripe_price_id', $price->id)->first();
 
-$plan = Plan::where('stripe_price_id', $price->id)->first();
-
-dd([
-    'price_id' => $price->id,
-    'plan' => $plan,
-    'plans_in_db' => Plan::select('id', 'name', 'stripe_price_id')->get(),
-]);
-
-$invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
-                   
+                    $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
                     // Handle trial end date (can be null if no trial)
                     $trialEndsAt = $subscription->trial_end
@@ -275,18 +260,31 @@ $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
                 case 'checkout.session.completed':
                     $session = $event->data->object;
-                    Log::info('Checkout Session', [
-    'customer_email' => $session->customer_email,
-    'customer_id' => $session->customer,
-]);
+                      Log::info('Checkout Session Data', [
+        'customer_email' => $session->customer_email,
+        'customer' => $session->customer,
+        'customer_details' => $session->customer_details,
+    ]);
                     $customer_email = $session->customer_email;
+$customer_email = $session->customer_email;
 
+if (empty($customer_email) && !empty($session->customer)) {
+    \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
+
+    $customer = \Stripe\Customer::retrieve($session->customer);
+
+    $customer_email = $customer->email;
+}
                     $user = User::where('email', $customer_email)->first();
-                    if (!$user) {
-                        Log::warning("Stripe webhook: User not found with email {$customer_email}");
-                        return response()->json(['error' => 'User not found'], 404);
-                    }
+                  if (!$user) {
+    Log::warning('Stripe webhook: User not found', [
+        'email' => $customer_email,
+        'customer_id' => $session->customer,
+    ]);
 
+    // Acknowledge the webhook so Stripe stops retrying.
+    return response()->json(['received' => true], 200);
+}
                     if (isset($session->metadata->type) && $session->metadata->type == 'ticket') {
                         $eventId = $session->metadata->event_id;
                         $ticketTypeId = $session->metadata->ticket_type_id;
