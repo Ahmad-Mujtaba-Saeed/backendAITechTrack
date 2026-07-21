@@ -260,13 +260,7 @@ if (!$user) {
 
                 case 'checkout.session.completed':
                     $session = $event->data->object;
-                   $customer_email = $session->customer_details->email ?? null;
-
-Log::info('Customer Email', [
-    'email' => $customer_email,
-]);
-
-$user = User::where('email', $customer_email)->first();
+                    $customer_email = $session->customer_email;
 
                     $user = User::where('email', $customer_email)->first();
                     if (!$user) {
