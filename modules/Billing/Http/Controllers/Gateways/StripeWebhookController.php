@@ -106,13 +106,22 @@ class StripeWebhookController extends Controller
                     \Stripe\Stripe::setApiKey(env('STRIPE_SECRET'));
                     $customer = \Stripe\Customer::retrieve($customerId, []);
                     $customer_email = $customer->email;
+                    Log::info('Subscription Created', [
+    'customer_id' => $customerId,
+    'customer_email' => $customer_email,
+]);
 
                    $user = User::where('email', $customer_email)->first();
-
+Log::info('User By Email', [
+    'user_found' => $user ? true : false,
+    'user_id' => $user?->id,
+]);
 if (!$user && !empty($customerId)) {
     $user = User::where('stripe_customer_id', $customerId)->first();
 }
-
+Log::info('Trying Stripe Customer ID', [
+    'customer_id' => $customerId,
+]);
 if (!$user) {
     Log::warning('Stripe webhook: User not found', [
         'customer_id' => $customerId ?? null,
@@ -266,6 +275,10 @@ $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
                 case 'checkout.session.completed':
                     $session = $event->data->object;
+                    Log::info('Checkout Session', [
+    'customer_email' => $session->customer_email,
+    'customer_id' => $session->customer,
+]);
                     $customer_email = $session->customer_email;
 
                     $user = User::where('email', $customer_email)->first();
