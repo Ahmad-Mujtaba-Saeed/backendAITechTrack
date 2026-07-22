@@ -20,3 +20,5 @@ Route::middleware(['auth:sanctum','permission:manage-users'])->prefix('/users/ma
     Route::post('/cancel-subscription-immediate/{user_id}', [UserManagementController::class, 'cancelSubscriptionImmediate']);
     Route::delete('/delete/{user_id}', [UserManagementController::class, 'delete']);
 });
+
+Route::post('/contact', [UserController::class, 'store']);

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Modules\User\Models\User;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
@@ -88,4 +89,27 @@ class UserController extends Controller
         ]);
     }
 
+    public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255',
+        'subject' => 'required|string|max:255',
+        'message' => 'required|string',
+    ]);
+
+    DB::table('contacts')->insert([
+        'name' => $request->name,
+        'email' => $request->email,
+        'subject' => $request->subject,
+        'message' => $request->message,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Message submitted successfully.',
+    ], 201);
+}
 }
