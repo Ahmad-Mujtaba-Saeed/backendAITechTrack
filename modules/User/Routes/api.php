@@ -10,6 +10,12 @@ Route::middleware(['auth:sanctum'])->prefix('/user')
     Route::post('/profile-settings', [UserController::class, 'ProfileSettings']);
 });
 
+
+Route::middleware(['auth:sanctum'])
+    ->group(function () {
+    Route::post('/change-password', [UserController::class, 'changePassword']);
+});
+
 Route::middleware(['auth:sanctum','permission:manage-users'])->prefix('/users/management')
     ->group(function () {
     Route::get('/', [UserManagementController::class, 'index']);

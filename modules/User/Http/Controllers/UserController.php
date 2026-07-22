@@ -9,6 +9,7 @@ use Modules\User\Models\User;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -111,5 +112,41 @@ class UserController extends Controller
         'success' => true,
         'message' => 'Message submitted successfully.',
     ], 201);
+}
+
+
+public function changePassword(Request $request)
+{
+    $request->validate([
+        'current_password' => 'required',
+        'new_password' => 'required|min:8|confirmed',
+    ]);
+
+    $user = Auth::user();
+
+    // Check current password
+    if (!Hash::check($request->current_password, $user->password)) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Current password is incorrect.'
+        ], 400);
+    }
+
+    // Prevent using the same password
+    if (Hash::check($request->new_password, $user->password)) {
+        return response()->json([
+            'status' => false,
+            'message' => 'New password cannot be the same as the current password.'
+        ], 400);
+    }
+
+    // Update password
+    $user->password = Hash::make($request->new_password);
+    $user->save();
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Password changed successfully.'
+    ], 200);
 }
 }
