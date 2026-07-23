@@ -10,7 +10,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
-
+use Illuminate\Support\Facades\Mail;
 class UserController extends Controller
 {
     public function getUser(Request $request)
@@ -90,7 +90,7 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
 {
     $request->validate([
         'name' => 'required|string|max:255',
@@ -108,12 +108,38 @@ class UserController extends Controller
         'updated_at' => now(),
     ]);
 
+    // Email to Admin
+    Mail::send([], [], function ($mail) use ($request) {
+        $mail->to('support@techtrack.online') // Replace with your admin email
+             ->subject('New Contact Form Submission')
+             ->html("
+                <h2>New Contact Form Submission</h2>
+                <p><strong>Name:</strong> {$request->name}</p>
+                <p><strong>Email:</strong> {$request->email}</p>
+                <p><strong>Subject:</strong> {$request->subject}</p>
+                <p><strong>Message:</strong><br>{$request->message}</p>
+             ");
+    });
+
+    // Confirmation Email to User
+    Mail::send([], [], function ($mail) use ($request) {
+        $mail->to($request->email)
+             ->subject('Thank You for Contacting Cv Builder')
+             ->html("
+                <h2>Thank You, {$request->name}!</h2>
+                <p>We have received your message.</p>
+                <p><strong>Subject:</strong> {$request->subject}</p>
+                <p>Our team will get back to you as soon as possible.</p>
+                <br>
+                <p>Regards,<br>Cv Builder Team</p>
+             ");
+    });
+
     return response()->json([
         'success' => true,
         'message' => 'Message submitted successfully.',
     ], 201);
 }
-
 
 public function changePassword(Request $request)
 {

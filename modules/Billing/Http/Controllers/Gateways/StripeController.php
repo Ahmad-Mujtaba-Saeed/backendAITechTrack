@@ -13,38 +13,71 @@ use Illuminate\Support\Facades\Log;
 class StripeController extends Controller
 {
 
-    public function getSubscriptionDetails(Request $request)
-    {
-        $user = Auth::user();
+public function getSubscriptionDetails(Request $request)
+{
+    $user = Auth::user();
 
-        $subscription = Subscription::where('user_id', $user->id)
-            ->with('plan')
-            ->latest()
-            ->first();
+    Log::info('Subscription API called', [
+        'user_id' => $user?->id,
+        'email' => $user?->email,
+    ]);
 
-        if (!$subscription || !$subscription->type_id) {
-            return response()->json(['message' => 'Active subscription not found.'], 404);
-        }
+    $subscription = Subscription::where('user_id', $user->id)
+        ->with('plan')
+        ->latest()
+        ->first();
 
-        Stripe::setApiKey(config('services.stripe.secret'));
+    Log::info('Subscription query result', [
+        'subscription' => $subscription ? $subscription->toArray() : null,
+    ]);
 
-        try {
-            // $subscriptionStripe = \Stripe\Subscription::retrieve([
-            //     'id' => $subscription->sub_id,
-            //     'expand' => []
-            // ]);
+    if (!$subscription) {
+        Log::warning('No subscription found', [
+            'user_id' => $user->id,
+        ]);
 
-            return response()->json([
-                'subscription' => $subscription,
-                'user' => $user,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to retrieve subscription details.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'message' => 'Active subscription not found.'
+        ], 404);
     }
+
+    Log::info('Subscription type_id', [
+        'type_id' => $subscription->type_id,
+        'sub_id' => $subscription->sub_id,
+        'plan_id' => $subscription->plan_id,
+    ]);
+
+    if (!$subscription->type_id) {
+        Log::warning('Subscription exists but type_id is null', [
+            'subscription_id' => $subscription->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Active subscription not found.'
+        ], 404);
+    }
+
+    Stripe::setApiKey(config('services.stripe.secret'));
+
+    try {
+        Log::info('Returning subscription response');
+
+        return response()->json([
+            'subscription' => $subscription,
+            'user' => $user,
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Failed to retrieve subscription details', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'message' => 'Failed to retrieve subscription details.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
 
 public function createSubscriptionSession(Request $request, $planId)

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>You’re all set, {{ $user->name }} — your MyPathfinder journey starts now 🚀</title>
+    <title>You’re all set, {{ $user->name }} — your Cv Builder journey starts now 🚀</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -44,7 +44,7 @@
     <div class="content">
         <p><Strong>Hey {{ $user->name }}</Strong></p>
 
-        <p>Welcome to <strong>MyPathfinder</strong>! We're thrilled to have you on board! 🙌</p>
+        <p>Welcome to <strong> Cv Builder</strong>! We're thrilled to have you on board! 🙌</p>
 
         <p>Your <strong>{{ $plan->interval }} Plan</strong> is now active, which means you’ve unlocked full access to all our premium
             tools to help you build, refine, and track your career journey with confidence.</p>
@@ -69,7 +69,7 @@
             See you inside,
         </p>
 
-        <p><strong>The MyPathfinder Team</strong></p>
+        <p><strong>The  Cv Builder Team</strong></p>
 
         <a href="https://portal.mypathfinder.uk">
             <img src="{{ asset('images/pathfinder.jpg') }}" alt="MyPathfinder" style="width:100%; max-width: 900px; height: auto;">
@@ -86,7 +86,7 @@
             the intended recipient, please notify the sender immediately and delete this email from your system. Any
             unauthorised use, disclosure, copying, or distribution is prohibited.
             <br>
-            MyPathfinder Ltd is a company registered in England and Wales with company number 16239837.
+             Cv Builder Ltd is a company registered in England and Wales with company number 16239837.
 
         </p>
     </div>
