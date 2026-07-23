@@ -18,9 +18,7 @@ use Illuminate\Support\Facades\Log;
 class AuthController extends Controller
 {
     public function register(Request $request)
-    { \Log::error('Stripe customer creation failed during registration', [
-    'request' => $request->all(),
-]);
+    { 
         $request->validate([
             'name' => 'required|string|max:100|min:3',
             'email' => 'required|string|email|max:100|unique:users',

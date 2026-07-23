@@ -43,11 +43,6 @@ class FirebaseController extends Controller
                 ]
             );
 
-            // $steps = GettingStartedStep::create([
-            // 'user_id' => $user->id,
-            // 'sign_up' => true,
-            // ]);
-
             // Revoke existing tokens and create a new one
             $user->tokens()->delete();
             $token = $user->createToken('web')->plainTextToken;
