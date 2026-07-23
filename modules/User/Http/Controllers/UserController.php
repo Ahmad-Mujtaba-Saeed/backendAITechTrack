@@ -144,19 +144,10 @@ public function store(Request $request)
 public function changePassword(Request $request)
 {
     $request->validate([
-        'current_password' => 'required',
         'new_password' => 'required|min:8|confirmed',
     ]);
 
     $user = Auth::user();
-
-    // Check current password
-    if (!Hash::check($request->current_password, $user->password)) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Current password is incorrect.'
-        ], 400);
-    }
 
     // Prevent using the same password
     if (Hash::check($request->new_password, $user->password)) {
