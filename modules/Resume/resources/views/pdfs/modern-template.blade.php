@@ -4,181 +4,120 @@
 <meta charset="UTF-8">
 <title>{{ $resumeData['candidateName'][0]['firstName'] ?? '' }} {{ $resumeData['candidateName'][0]['familyName'] ?? '' }} - Resume</title>
 <style>
-
-@page {
-    size: A4 portrait;
+   
+  html, body {
     margin: 0;
-}
-
-html, body {
-    width: 210mm;
-    height: 297mm;
-    margin:0;
-    padding:0;
+    padding: 0;
     font-family: Arial, sans-serif;
-    font-size:12px;
-    color:#333;
-}
-
-
-.main-table {
-    width:210mm;
-    height:auto;
-    border-collapse:collapse;
-    table-layout:fixed;
-}
-
-
-.sidebar {
-    width:30%;
-    background:#8B4444;
-    color:white;
-    vertical-align:top;
-    padding:15px;
-}
-
-
-.content {
-    width:70%;
-    background:#FAFAFA;
-    vertical-align:top;
-    padding:15px;
-}
-
-
-
-.name {
-    text-align:center;
-    font-size:20px;
-    font-weight:bold;
-    margin-bottom:10px;
-}
-
-
-.profile-image {
-    width:90px;
-    height:90px;
-    border-radius:50%;
-    margin:0 auto 10px auto;
-    overflow:hidden;
-}
-
-
-.profile-image img {
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-
-
-.sidebar-title {
-
-    font-size:12px;
-    font-weight:bold;
-    border-bottom:1px solid rgba(255,255,255,.4);
-    padding-bottom:3px;
-    margin-top:12px;
-
-}
-
-
-.personal-info p {
-
-    margin:3px 0;
-    font-size:11px;
-
-}
-
-
-.section {
-
-    margin-bottom:10px;
-    page-break-inside:avoid;
-
-}
-
-
-.section-title {
-
-    color:#2C5F9E;
-    font-size:14px;
-    font-weight:bold;
-    border-bottom:1px solid #2C5F9E;
-    padding-bottom:3px;
-    margin-bottom:6px;
-
-}
-
-
-.job-item,
-.education-item {
-
-    page-break-inside:avoid;
-    margin-bottom:8px;
-
-}
-
-
-.job-title {
-
-    font-size:12px;
-    font-weight:bold;
-    margin:0;
-
-}
-
-
-.job-company {
-
-    font-size:12px;
-    font-weight:bold;
-    margin:3px 0;
-
-}
-
-
-.job-description {
-
-    font-size:11px;
-    line-height:1.35;
-    margin:3px 0;
-
-}
-
-
-ul.achievements-list {
-
-    margin:3px 0 0 12px;
-    padding:0;
-
-}
-
-
-ul.achievements-list li {
-
-    margin-bottom:2px;
-
-}
-
-
-
-table {
-
-    page-break-inside:auto;
-
-}
-
-
-tr {
-
-    page-break-inside:avoid;
-
-}
-
-
+    font-size: 13px;
+    color: #333;
+    background: #fff;
+  }
+
+  .main-table {
+    width: 700px;
+    border-collapse: collapse;
+    gap: 10px;
+    height: 100%;
+  }
+
+  .sidebar {
+    width: 200px;
+    background: #8B4444;
+    color: #fff;
+    vertical-align: top;
+    padding: 20px;
+    height: 1000px;
+  }
+
+  .content {
+    background: #FAFAFA;
+    padding: 5px;
+    vertical-align: top;
+    width: 500px;
+    padding-left: 20px;
+  }
+
+  /* SIDEBAR STYLES */
+  .sidebar .name {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    margin: 0 0 15px 0;
+  }
+
+  .profile-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #D4B5C8;
+    margin: 0 auto 15px auto;
+    overflow: hidden;
+  }
+  .profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .sidebar-title {
+    font-size: 14px;
+    font-weight: bold;
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+  }
+
+  .personal-info p {
+    margin: 5px 0;
+  }
+
+  /* CONTENT STYLES */
+  .section {
+    margin-bottom: 5px;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    color: #2C5F9E;
+    font-size: 16px;
+    font-weight: bold;
+    border-bottom: 2px solid #2C5F9E;
+    padding-bottom: 4px;
+    margin-bottom: 10px;
+  }
+
+  .job-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .job-date {
+    font-size: 12px;
+    color: #555;
+  }
+
+  .job-company {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 5px 0;
+  }
+
+  .job-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 5px 0;
+  }
+
+  ul.achievements-list {
+    margin: 5px 0 0 18px;
+    padding: 0;
+  }
+
+  ul.achievements-list li {
+    margin-bottom: 4px;
+  }
 </style>
-
 </head>
 <body>
 
