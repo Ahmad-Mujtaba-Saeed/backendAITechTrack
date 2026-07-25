@@ -31,3 +31,4 @@ Route::middleware(['auth:sanctum'])->prefix('/billing')
 
 Route::post('/billing/stripe/webhook', [StripeWebhookController::class, 'handle']);
 
+a

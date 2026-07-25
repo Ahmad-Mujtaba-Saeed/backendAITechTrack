@@ -95,14 +95,12 @@ public function store(Request $request)
     $request->validate([
         'name' => 'required|string|max:255',
         'email' => 'required|email|max:255',
-        'subject' => 'required|string|max:255',
         'message' => 'required|string',
     ]);
 
     DB::table('contacts')->insert([
         'name' => $request->name,
         'email' => $request->email,
-        'subject' => $request->subject,
         'message' => $request->message,
         'created_at' => now(),
         'updated_at' => now(),
@@ -116,7 +114,6 @@ public function store(Request $request)
                 <h2>New Contact Form Submission</h2>
                 <p><strong>Name:</strong> {$request->name}</p>
                 <p><strong>Email:</strong> {$request->email}</p>
-                <p><strong>Subject:</strong> {$request->subject}</p>
                 <p><strong>Message:</strong><br>{$request->message}</p>
              ");
     });
@@ -128,7 +125,7 @@ public function store(Request $request)
              ->html("
                 <h2>Thank You, {$request->name}!</h2>
                 <p>We have received your message.</p>
-                <p><strong>Subject:</strong> {$request->subject}</p>
+                <p><strong>Subject:</strong> {$request->message}</p>
                 <p>Our team will get back to you as soon as possible.</p>
                 <br>
                 <p>Regards,<br>Cv Builder Team</p>
