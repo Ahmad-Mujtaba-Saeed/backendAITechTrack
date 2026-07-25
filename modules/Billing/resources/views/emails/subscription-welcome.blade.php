@@ -70,11 +70,6 @@
         </p>
 
         <p><strong>The  Cv Builder Team</strong></p>
-
-        <a href="https://portal.mypathfinder.uk">
-            <img src="{{ asset('images/pathfinder.jpg') }}" alt="MyPathfinder" style="width:100%; max-width: 900px; height: auto;">
-        </a>
-
         <br>
         <p>
             Alex Dobricic
