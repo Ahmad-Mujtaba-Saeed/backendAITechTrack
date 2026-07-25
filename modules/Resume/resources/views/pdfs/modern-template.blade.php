@@ -4,120 +4,182 @@
 <meta charset="UTF-8">
 <title>{{ $resumeData['candidateName'][0]['firstName'] ?? '' }} {{ $resumeData['candidateName'][0]['familyName'] ?? '' }} - Resume</title>
 <style>
-   
-  html, body {
+
+@page {
+    size: A4;
+    margin: 0;
+}
+
+html, body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
     font-size: 13px;
     color: #333;
     background: #fff;
-  }
+}
 
-  .main-table {
-    width: 700px;
+
+/* MAIN CV CONTAINER */
+.main-table {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
     border-collapse: collapse;
-    gap: 10px;
-    height: 100%;
-  }
+    table-layout: fixed;
+}
 
-  .sidebar {
-    width: 200px;
+
+/* LEFT SIDEBAR */
+.sidebar {
+    width: 30%;
     background: #8B4444;
     color: #fff;
     vertical-align: top;
-    padding: 20px;
-    height: 1000px;
-  }
+    padding: 25px;
+    height: auto;       /* important - remove fixed height */
+}
 
-  .content {
+
+/* RIGHT CONTENT */
+.content {
+    width: 70%;
     background: #FAFAFA;
-    padding: 5px;
+    padding: 25px;
     vertical-align: top;
-    width: 500px;
-    padding-left: 20px;
-  }
+}
 
-  /* SIDEBAR STYLES */
-  .sidebar .name {
+
+/* SIDEBAR STYLES */
+
+.sidebar .name {
     text-align: center;
     font-size: 22px;
     font-weight: bold;
     margin: 0 0 15px 0;
-  }
+}
 
-  .profile-image {
+
+.profile-image {
     width: 120px;
     height: 120px;
     border-radius: 50%;
     background: #D4B5C8;
     margin: 0 auto 15px auto;
     overflow: hidden;
-  }
-  .profile-image img {
+}
+
+
+.profile-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-  }
+}
 
-  .sidebar-title {
+
+.sidebar-title {
     font-size: 14px;
     font-weight: bold;
     border-bottom: 2px solid rgba(255,255,255,0.3);
-  }
+    padding-bottom: 5px;
+    margin-top: 20px;
+}
 
-  .personal-info p {
+
+.personal-info p {
     margin: 5px 0;
-  }
+    font-size: 12px;
+}
 
-  /* CONTENT STYLES */
-  .section {
-    margin-bottom: 5px;
+
+/* CONTENT SECTIONS */
+
+.section {
+    margin-bottom: 15px;
     page-break-inside: avoid;
-  }
+}
 
-  .section-title {
+
+.section-title {
     color: #2C5F9E;
     font-size: 16px;
     font-weight: bold;
     border-bottom: 2px solid #2C5F9E;
     padding-bottom: 4px;
     margin-bottom: 10px;
-  }
+}
 
-  .job-title {
+
+.job-item,
+.education-item {
+    page-break-inside: avoid;
+}
+
+
+/* JOB DETAILS */
+
+.job-title {
     font-size: 14px;
     font-weight: bold;
     margin: 0;
-  }
+}
 
-  .job-date {
+
+.job-date {
     font-size: 12px;
     color: #555;
-  }
+}
 
-  .job-company {
+
+.job-company {
     font-size: 13px;
     font-weight: 600;
     margin: 5px 0;
-  }
+}
 
-  .job-description {
+
+.job-description {
     font-size: 13px;
     line-height: 1.5;
     margin: 5px 0;
-  }
+}
 
-  ul.achievements-list {
+
+/* LISTS */
+
+ul.achievements-list {
     margin: 5px 0 0 18px;
     padding: 0;
-  }
+}
 
-  ul.achievements-list li {
+
+ul.achievements-list li {
     margin-bottom: 4px;
-  }
+}
+
+
+/* PDF PAGE CONTROL */
+
+table {
+    page-break-inside: auto;
+}
+
+
+tr {
+    page-break-inside: avoid;
+}
+
+
+.section,
+.profile-image,
+.sidebar-title {
+    page-break-inside: avoid;
+}
+
+
 </style>
+
 </head>
 <body>
 
