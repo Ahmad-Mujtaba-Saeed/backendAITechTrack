@@ -6,175 +6,174 @@
 <style>
 
 @page {
-    size: A4;
+    size: A4 portrait;
     margin: 0;
 }
 
 html, body {
-    margin: 0;
-    padding: 0;
+    width: 210mm;
+    height: 297mm;
+    margin:0;
+    padding:0;
     font-family: Arial, sans-serif;
-    font-size: 13px;
-    color: #333;
-    background: #fff;
+    font-size:12px;
+    color:#333;
 }
 
 
-/* MAIN CV CONTAINER */
 .main-table {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
-    border-collapse: collapse;
-    table-layout: fixed;
+    width:210mm;
+    height:auto;
+    border-collapse:collapse;
+    table-layout:fixed;
 }
 
 
-/* LEFT SIDEBAR */
 .sidebar {
-    width: 30%;
-    background: #8B4444;
-    color: #fff;
-    vertical-align: top;
-    padding: 25px;
-    height: auto;       /* important - remove fixed height */
+    width:30%;
+    background:#8B4444;
+    color:white;
+    vertical-align:top;
+    padding:15px;
 }
 
 
-/* RIGHT CONTENT */
 .content {
-    width: 70%;
-    background: #FAFAFA;
-    padding: 25px;
-    vertical-align: top;
+    width:70%;
+    background:#FAFAFA;
+    vertical-align:top;
+    padding:15px;
 }
 
 
-/* SIDEBAR STYLES */
 
-.sidebar .name {
-    text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    margin: 0 0 15px 0;
+.name {
+    text-align:center;
+    font-size:20px;
+    font-weight:bold;
+    margin-bottom:10px;
 }
 
 
 .profile-image {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: #D4B5C8;
-    margin: 0 auto 15px auto;
-    overflow: hidden;
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    margin:0 auto 10px auto;
+    overflow:hidden;
 }
 
 
 .profile-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
 }
 
 
+
 .sidebar-title {
-    font-size: 14px;
-    font-weight: bold;
-    border-bottom: 2px solid rgba(255,255,255,0.3);
-    padding-bottom: 5px;
-    margin-top: 20px;
+
+    font-size:12px;
+    font-weight:bold;
+    border-bottom:1px solid rgba(255,255,255,.4);
+    padding-bottom:3px;
+    margin-top:12px;
+
 }
 
 
 .personal-info p {
-    margin: 5px 0;
-    font-size: 12px;
+
+    margin:3px 0;
+    font-size:11px;
+
 }
 
 
-/* CONTENT SECTIONS */
-
 .section {
-    margin-bottom: 15px;
-    page-break-inside: avoid;
+
+    margin-bottom:10px;
+    page-break-inside:avoid;
+
 }
 
 
 .section-title {
-    color: #2C5F9E;
-    font-size: 16px;
-    font-weight: bold;
-    border-bottom: 2px solid #2C5F9E;
-    padding-bottom: 4px;
-    margin-bottom: 10px;
+
+    color:#2C5F9E;
+    font-size:14px;
+    font-weight:bold;
+    border-bottom:1px solid #2C5F9E;
+    padding-bottom:3px;
+    margin-bottom:6px;
+
 }
 
 
 .job-item,
 .education-item {
-    page-break-inside: avoid;
+
+    page-break-inside:avoid;
+    margin-bottom:8px;
+
 }
 
-
-/* JOB DETAILS */
 
 .job-title {
-    font-size: 14px;
-    font-weight: bold;
-    margin: 0;
-}
 
+    font-size:12px;
+    font-weight:bold;
+    margin:0;
 
-.job-date {
-    font-size: 12px;
-    color: #555;
 }
 
 
 .job-company {
-    font-size: 13px;
-    font-weight: 600;
-    margin: 5px 0;
+
+    font-size:12px;
+    font-weight:bold;
+    margin:3px 0;
+
 }
 
 
 .job-description {
-    font-size: 13px;
-    line-height: 1.5;
-    margin: 5px 0;
+
+    font-size:11px;
+    line-height:1.35;
+    margin:3px 0;
+
 }
 
 
-/* LISTS */
-
 ul.achievements-list {
-    margin: 5px 0 0 18px;
-    padding: 0;
+
+    margin:3px 0 0 12px;
+    padding:0;
+
 }
 
 
 ul.achievements-list li {
-    margin-bottom: 4px;
+
+    margin-bottom:2px;
+
 }
 
 
-/* PDF PAGE CONTROL */
 
 table {
-    page-break-inside: auto;
+
+    page-break-inside:auto;
+
 }
 
 
 tr {
-    page-break-inside: avoid;
-}
 
+    page-break-inside:avoid;
 
-.section,
-.profile-image,
-.sidebar-title {
-    page-break-inside: avoid;
 }
 
 
