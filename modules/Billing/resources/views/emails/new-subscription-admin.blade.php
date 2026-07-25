@@ -57,7 +57,7 @@
         </ul>
 
         <p>
-            You can jump straight in and start exploring the user's <a href="https://portal.mypathfinder.uk">Dashboard</a> (their personal career HQ!)
+            You can jump straight in and start exploring the user's <a href="https://aicvbuilder.wasimdev.com/">Dashboard</a> (their personal career HQ!)
             <br>
             If you ever need a hand or have a question, our team’s here to help. Just reach out — we’ve got your back.
         </p>
@@ -70,10 +70,6 @@
 
     <div class="footer">
         <p>© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-        <p>
-            <a href="{{ config('app.url') }}/privacy-policy">Privacy Policy</a> |
-            <a href="{{ config('app.url') }}/terms">Terms of Service</a>
-        </p>
     </div>
 </body>
 

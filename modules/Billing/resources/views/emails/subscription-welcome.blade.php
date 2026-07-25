@@ -58,7 +58,7 @@
         </ul>
 
         <p>
-            You can jump straight in and start exploring your <a href="https://portal.mypathfinder.uk">Dashboard</a> (your personal career HQ!)
+            You can jump straight in and start exploring your <a href="https://aicvbuilder.wasimdev.com/">Dashboard</a> (your personal career HQ!)
             <br>
             If you ever need a hand or have a question, our team’s here to help. Just reach out — we’ve got your back.
         </p>
@@ -90,10 +90,6 @@
 
     <div class="footer">
         <p>© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</p>
-        <p>
-            <a href="https://portal.mypathfinder.uk/privacy-policy">Privacy Policy</a> |
-            <a href="https://portal.mypathfinder.uk/terms">Terms of Service</a>
-        </p>
     </div>
 </body>
 

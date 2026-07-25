@@ -68,8 +68,8 @@
         
         <p>We'd love to know why you decided to cancel. Your feedback is valuable to us and helps us improve our service.</p>
         
-        <div style="text-align: center; margin: 30px 0;
-            <a href="{{ url('/contact') }}" class="button">Share Your Feedback</a>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://cv-builder-five-lilac.vercel.app/#contact" class="button">Share Your Feedback</a>
         </div>
         
         <p>If you change your mind, you can reactivate your subscription at any time by visiting your account settings.</p>
