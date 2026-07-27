@@ -28,3 +28,6 @@ Route::middleware(['auth:sanctum','permission:manage-users'])->prefix('/users/ma
 });
 
 Route::post('/contact', [UserController::class, 'store']);
+
+Route::get('/support', [UserController::class, 'support'])->name('support');
+Route::get('/docs', [UserController::class, 'docs'])->name('docs');
