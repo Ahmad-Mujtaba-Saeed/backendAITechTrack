@@ -1394,7 +1394,7 @@ class ResumeController extends Controller
                     'message' => 'Resume data is not in the correct format'
                 ], 400);
             }
-
+\Log::info("Using template: " . $template);
             // 4. Pass it to Blade template
             $pdf = Pdf::loadView(
                 'resume::pdfs.' . $template . '-template',
