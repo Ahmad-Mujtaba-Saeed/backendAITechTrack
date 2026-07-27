@@ -4,205 +4,120 @@
 <meta charset="UTF-8">
 <title>{{ $resumeData['candidateName'][0]['firstName'] ?? '' }} {{ $resumeData['candidateName'][0]['familyName'] ?? '' }} - Resume</title>
 <style>
-html,
-body {
+   
+  html, body {
     margin: 0;
     padding: 0;
-    width: 210mm;
-    height: 297mm;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
     color: #333;
     background: #fff;
-    overflow: hidden;
-}
+  }
 
-* {
-    box-sizing: border-box;
-}
-
-table,
-tr,
-td,
-.section,
-.job-item,
-.education-item {
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-
-.main-table {
-    width: 210mm;
-    height: 297mm;
+  .main-table {
+    width: 700px;
     border-collapse: collapse;
-    table-layout: fixed;
-}
+    gap: 10px;
+    height: 100%;
+  }
 
-/* ======================
-   SIDEBAR
-====================== */
-
-.sidebar {
-    width: 30%;
+  .sidebar {
+    width: 200px;
     background: #8B4444;
-    color: white;
+    color: #fff;
     vertical-align: top;
-    padding: 15px;
-}
+    padding: 20px;
+    height: 1000px;
+  }
 
-.sidebar .name {
+  .content {
+    background: #FAFAFA;
+    padding: 5px;
+    vertical-align: top;
+    width: 500px;
+    padding-left: 20px;
+  }
+
+  /* SIDEBAR STYLES */
+  .sidebar .name {
     text-align: center;
     font-size: 22px;
     font-weight: bold;
-    margin: 0 0 15px;
-    line-height: 1.2;
-}
+    margin: 0 0 15px 0;
+  }
 
-.profile-image {
-    width: 90px;
-    height: 90px;
+  .profile-image {
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     background: #D4B5C8;
-    margin: 0 auto 15px;
+    margin: 0 auto 15px auto;
     overflow: hidden;
-}
-
-.profile-image img {
+  }
+  .profile-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-}
+  }
 
-.sidebar-section {
-    margin-bottom: 18px;
-}
-
-.sidebar-title {
+  .sidebar-title {
     font-size: 14px;
     font-weight: bold;
-    border-bottom: 2px solid rgba(255,255,255,.3);
-    padding-bottom: 4px;
-    margin-bottom: 8px;
-}
+    border-bottom: 2px solid rgba(255,255,255,0.3);
+  }
 
-.personal-info p {
-    margin: 3px 0;
-    font-size: 12px;
-    line-height: 1.4;
-}
+  .personal-info p {
+    margin: 5px 0;
+  }
 
-/* ======================
-   CONTENT
-====================== */
+  /* CONTENT STYLES */
+  .section {
+    margin-bottom: 5px;
+    page-break-inside: avoid;
+  }
 
-.content {
-    width: 70%;
-    background: #FAFAFA;
-    padding: 18px;
-    vertical-align: top;
-}
-
-.section {
-    margin-bottom: 12px;
-}
-
-.section-title {
+  .section-title {
     color: #2C5F9E;
     font-size: 16px;
     font-weight: bold;
     border-bottom: 2px solid #2C5F9E;
     padding-bottom: 4px;
-    margin-bottom: 8px;
-}
+    margin-bottom: 10px;
+  }
 
-.section p {
-    font-size: 12px;
-    line-height: 1.45;
+  .job-title {
+    font-size: 14px;
+    font-weight: bold;
     margin: 0;
-}
+  }
 
-.job-item,
-.education-item {
-    margin-bottom: 12px;
-}
+  .job-date {
+    font-size: 12px;
+    color: #555;
+  }
 
-.job-title {
+  .job-company {
     font-size: 13px;
-    font-weight: bold;
-    margin: 0;
-}
+    font-weight: 600;
+    margin: 5px 0;
+  }
 
-.job-company {
-    font-size: 12px;
-    font-weight: bold;
-    color: #444;
-    margin: 3px 0;
-}
+  .job-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 5px 0;
+  }
 
-.job-date {
-    font-size: 11px;
-    color: #666;
-}
-
-.job-description {
-    font-size: 12px;
-    line-height: 1.35;
-    margin: 3px 0 0;
-}
-
-ul.achievements-list {
-    margin: 4px 0 0 18px;
+  ul.achievements-list {
+    margin: 5px 0 0 18px;
     padding: 0;
-}
+  }
 
-ul.achievements-list li {
-    font-size: 12px;
-    line-height: 1.35;
-    margin-bottom: 2px;
-}
-
-/* ======================
-   EDUCATION
-====================== */
-
-.education-item p {
-    margin: 2px 0;
-    font-size: 12px;
-}
-
-/* ======================
-   LINKS
-====================== */
-
-a {
-    color: inherit;
-    text-decoration: none;
-}
-
-/* ======================
-   PRINT
-====================== */
-
-@page {
-    size: A4 portrait;
-    margin: 0;
-}
-
-@media print {
-
-    html,
-    body {
-        width: 210mm;
-        height: 297mm;
-        overflow: hidden;
-    }
-
-    .main-table {
-        width: 210mm;
-        height: 297mm;
-    }
-}
-  </style>
+  ul.achievements-list li {
+    margin-bottom: 4px;
+  }
+</style>
 </head>
 <body>
 
