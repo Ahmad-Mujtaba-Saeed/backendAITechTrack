@@ -1,0 +1,32 @@
+Git Clone
+
+
+Docker Compose Up
+
+Docker Compose Down
+
+docker compose up -d --build {for build again}
+
+docker compose exec app [Command]
+
+docker exec -it ams_extension_backend bash {to open bash and run artisan commands}
+
+http://localhost:8585  //backend url 
+http://localhost:8686/index.php //db url
+
+
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=backend
+DB_USERNAME=backend
+DB_PASSWORD=secret
+
+----------------------------- for docker -------------------------------------------------------
+
+
+php artisan serve {for local server}
+php artisan migrate {for migration}
+php artisan db:seed {for seed}
+
+can enable or disbale a module through module.json file

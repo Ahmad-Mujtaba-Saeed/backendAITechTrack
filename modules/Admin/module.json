@@ -1,0 +1,9 @@
+{
+  "name": "Admin",
+  "enabled": true,
+  "version": "1.0.0",
+  "description": "Admin management module",
+  "providers": [
+    "Modules\\Admin\\ModuleServiceProvider"
+  ]
+}
