@@ -9,6 +9,7 @@ use Modules\Billing\Services\StripePlanService;
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+
 class PlanController extends Controller
 {
    public function activePlans(Request $request)
@@ -60,7 +61,7 @@ class PlanController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Plan Creation Error: ' . $e->getMessage());
+           Log::error('Plan Creation Error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to create plan',
                 'error' => $e->getMessage()
