@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Resume\Http\Controllers\ResumeController;
-
+use Modules\Resume\Http\Controllers\ATSController;
 
 Route::middleware(['auth:sanctum'])->prefix('/resume')
     ->group(function () {
@@ -15,6 +15,7 @@ Route::middleware(['auth:sanctum'])->prefix('/resume')
     Route::delete('/{id}', [ResumeController::class, 'delete']);
 
     Route::get('/{id}/download', [ResumeController::class, 'download']);
+    Route::post('/{id}/ats-check', [ATSController::class, 'check']);
 });
 
 Route::get('/resume/{id}/download-doc', [ResumeController::class, 'downloadDoc']);

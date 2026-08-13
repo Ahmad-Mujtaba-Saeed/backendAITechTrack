@@ -3,7 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-
+use modules\Resume\Exceptions\ATSAnalysisException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,6 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'agent' => \App\Http\Middleware\RequireAgentToken::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+->withExceptions(function (Exceptions $exceptions) {
+    $exceptions->render(function (ATSAnalysisException $e, $request) {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getSafeMessage(),
+                'request_id' => $e->getRequestId(),
+            ], 503);
+        }
+    });
+})->create();

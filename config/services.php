@@ -35,6 +35,7 @@ return [
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
+        'ats_model' => env('OPENAI_ATS_MODEL', 'gpt-4o-mini'),
     ],
 
     'stripe' => [
