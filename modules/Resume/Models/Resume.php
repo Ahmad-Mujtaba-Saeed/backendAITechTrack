@@ -30,6 +30,7 @@ class Resume extends Model implements Auditable
         'is_default',
         'is_public',
         'last_modified_at',
+        'job_description',
     ];
 
     /**

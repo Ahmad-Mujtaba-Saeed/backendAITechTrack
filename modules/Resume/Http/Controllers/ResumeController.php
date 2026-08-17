@@ -12,8 +12,9 @@ use Smalot\PdfParser\Parser;
 // use thiagoalessio\TesseractOCR\TesseractOCR;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\FacadesLog;
 // use Modules\Resume\Models\GettingStartedStep;
+use Illuminate\Support\Facades\Log;
 
 class ResumeController extends Controller
 {
@@ -93,13 +94,15 @@ class ResumeController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
-    {
+    {     
         $request->validate([
             'title' => 'nullable',
             'cv_resumejson' => 'nullable',
+            'job_description' => 'nullable',
         ]);
 
         $cv_resumejson = $request->cv_resumejson;
+        $job_description = $request->job_description;
 
         $resume = Resume::findOrFail($id);
         if($request->cv_resumejson){
@@ -108,6 +111,11 @@ class ResumeController extends Controller
         if($request->title){
             $resume->title = $request->title;
         }
+
+        if ($request->has('job_description')) {
+            $resume->job_description = $job_description;
+        }
+
         $cv_resumejson = $request->cv_resumejson ?? $resume->cv_resumejson;
 
         $finalTitle = $request->title ?? $resume->title;
@@ -264,7 +272,7 @@ class ResumeController extends Controller
                 $cleanOutput = mb_convert_encoding(trim($text), 'UTF-8', 'UTF-8');
                 
             } catch (\Exception $e) {
-                \Log::error('Error processing DOCX file', [
+                Log::error('Error processing DOCX file', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                     'file' => $path
@@ -930,7 +938,7 @@ class ResumeController extends Controller
                 ]);
 
             } catch (\Exception $e) {
-                \Log::error('Resume parsing failed: ' . $e->getMessage(), [
+                Log::error('Resume parsing failed: ' . $e->getMessage(), [
                     'file' => $file->getClientOriginalName(),
                     'error' => $e->getTraceAsString()
                 ]);
@@ -961,7 +969,7 @@ class ResumeController extends Controller
             $resumeData = $resume->cv_resumejson;
             
             if (empty($resumeData)) {
-                \Log::error('Resume data is empty', ['resume_id' => $id]);
+                Log::error('Resume data is empty', ['resume_id' => $id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Resume data is empty'
@@ -971,7 +979,7 @@ class ResumeController extends Controller
             if (is_string($resumeData)) {
                 $decoded = json_decode($resumeData, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    \Log::error('Failed to decode resume JSON', [
+                    Log::error('Failed to decode resume JSON', [
                         'resume_id' => $id,
                         'error' => json_last_error_msg()
                     ]);
@@ -1013,7 +1021,7 @@ class ResumeController extends Controller
             ])->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            \Log::error('DOCX Generation Failed', [
+            Log::error('DOCX Generation Failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -1357,7 +1365,7 @@ class ResumeController extends Controller
             
             // Check if cv_resumejson is null or empty
             if (empty($resumeData)) {
-                \Log::error('Resume data is empty', ['resume_id' => $id]);
+                Log::error('Resume data is empty', ['resume_id' => $id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Resume data is empty'
@@ -1368,7 +1376,7 @@ class ResumeController extends Controller
             if (is_string($resumeData)) {
                 $decoded = json_decode($resumeData, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
-                    \Log::error('Failed to decode resume JSON', [
+                    Log::error('Failed to decode resume JSON', [
                         'resume_id' => $id,
                         'error' => json_last_error_msg()
                     ]);
@@ -1381,7 +1389,7 @@ class ResumeController extends Controller
             }
             
             // Log resume data structure for debugging
-            \Log::info('Resume data structure', [
+            Log::info('Resume data structure', [
                 'resume_id' => $id,
                 'data_keys' => is_array($resumeData) ? array_keys($resumeData) : 'not an array',
                 'data_type' => gettype($resumeData)
@@ -1394,7 +1402,7 @@ class ResumeController extends Controller
                     'message' => 'Resume data is not in the correct format'
                 ], 400);
             }
-\Log::info("Using template: " . $template);
+Log::info("Using template: " . $template);
             // 4. Pass it to Blade template
             $pdf = Pdf::loadView(
                 'resume::pdfs.' . $template . '-template',
@@ -1412,7 +1420,7 @@ class ResumeController extends Controller
                 ->header('Expires', '0');
             
         } catch (\Exception $e) {
-            \Log::error('Error generating PDF', [
+            Log::error('Error generating PDF', [
                 'resume_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

@@ -7,96 +7,53 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use JsonException;
 use Modules\Resume\Exceptions\ATSAnalysisException;
 
-class ATSAnalyzerService
+/**
+ * Scores a CV against a specific job description — unlike
+ * ATSAnalyzerService (general ATS readiness, no job context),
+ * this answers "how well does this CV match THIS job posting".
+ */
+class JobMatchAnalyzerService
 {
-    /**
-     * HTTP status codes worth retrying — transient provider-side issues.
-     * 4xx client errors (bad request, auth) are deliberately excluded:
-     * retrying those just burns quota for a guaranteed repeat failure.
-     */
     private const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
 
-    /**
-     * Hard cap on any single free-text field sent to the model.
-     * Protects against context blow-up / runaway token cost from a
-     * pathological parser output (e.g. a mis-parsed multi-page CV
-     * dumped into one field).
-     */
-    private const MAX_FIELD_LENGTH = 4000;
+    /** Cap on any CV free-text field. */
+    private const MAX_CV_FIELD_LENGTH = 4000;
+
+    /** Job descriptions run longer than CV fields — separate, larger cap. */
+    private const MAX_JOB_DESCRIPTION_LENGTH = 8000;
 
     /**
-     * How long a cached result for an unchanged CV stays valid.
-     * Long-lived on purpose: the point of this cache is "same resume,
-     * same score", not freshness.
+     * How long an identical (CV, job description) pair's result is cached.
+     * This is what makes the score stable: unchanged content always
+     * returns this exact cached result instead of hitting the model
+     * again and risking a different answer for the same input.
      */
-    private const RESULT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
+    private const CACHE_TTL_SECONDS = 86400; // 24 hours
 
     /**
-     * Known structural properties of each resume template, sourced from the
-     * actual Blade files (not guessed) — this is the "evidence" the system
-     * prompt requires before the model may say anything about layout/format.
-     * Keep this in sync with modules/Resume/resources/views/pdfs/*.blade.php.
-     */
-    private const TEMPLATE_FORMATTING_PROFILES = [
-        'classic' => ['tables' => 0, 'columns' => 1, 'graphics_or_icons' => false],
-        'luxe' => ['tables' => 0, 'columns' => 1, 'graphics_or_icons' => false],
-        'default' => ['tables' => 1, 'columns' => 1, 'graphics_or_icons' => true],
-        'modern' => ['tables' => 3, 'columns' => 2, 'graphics_or_icons' => true],
-    ];
-
-    /**
-     * Analyze a CV for ATS readiness.
-     *
      * @param array<string, mixed> $cv
-     * @param string|null $requestId Correlation id for logs; caller-supplied
-     *                               (e.g. a queue job id) so a support ticket
-     *                               can be traced end to end.
      * @return array<string, mixed>
      *
-     * @throws ATSAnalysisException on any failure. getMessage() has full
-     *         internal detail for logs; getSafeMessage() is safe to expose.
+     * @throws ATSAnalysisException
      */
-    public function analyze(array $cv, ?string $requestId = null, ?string $template = null): array
+    public function analyze(array $cv, string $jobDescription, ?string $requestId = null): array
     {
-        $requestId ??= (string) \Illuminate\Support\Str::uuid();
+        $requestId ??= (string) Str::uuid();
 
         $resume = $this->normalizeCv($cv);
+        $jobDescription = $this->capText($jobDescription, self::MAX_JOB_DESCRIPTION_LENGTH);
 
-        $this->assertHasContent($resume, $requestId);
+        $this->assertHasContent($resume, $jobDescription, $requestId);
 
-        // Content (domain/skills/experience/etc.) and formatting (template
-        // layout) are scored independently on purpose:
-        //   - the content score depends only on $resume, never on $template,
-        //     so changing the template alone can never move it or trigger a
-        //     fresh OpenAI call.
-        //   - the formatting score is computed locally in PHP from known
-        //     template facts, so it's instant and 100% deterministic.
-        $templateFacts = $this->templateFormattingFacts($template);
-
-        $contentResult = $this->analyzeContent($resume, $requestId);
-        $formattingCategory = $this->formattingCategory($templateFacts);
-
-        return $this->applyFormatting($contentResult, $formattingCategory, $templateFacts);
-    }
-
-    /**
-     * Domain-aware content analysis (everything except page layout).
-     * Cached purely by CV content, so "same CV -> same content score"
-     * holds regardless of which template is selected.
-     *
-     * @param array<string, mixed> $resume
-     * @return array<string, mixed>
-     */
-    private function analyzeContent(array $resume, string $requestId): array
-    {
-        $cacheKey = $this->resultCacheKey($resume);
+        $cacheKey = $this->cacheKey($resume, $jobDescription);
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
-            Log::info('ATS analysis: served from cache (unchanged CV)', [
+            Log::info('Job match analysis: served from cache — content unchanged since last run', [
                 'request_id' => $requestId,
                 'cache_key' => $cacheKey,
             ]);
@@ -107,7 +64,7 @@ class ATSAnalyzerService
         $apiKey = config('services.openai.api_key');
 
         if (empty($apiKey)) {
-            Log::error('ATS analysis: OpenAI API key not configured', [
+            Log::error('Job match analysis: OpenAI API key not configured', [
                 'request_id' => $requestId,
             ]);
 
@@ -124,21 +81,22 @@ class ATSAnalyzerService
         try {
             $payload = json_encode(
                 [
-                    'task' => 'Analyze this CV for ATS readiness.',
+                    'task' => 'Score this CV against the supplied job description.',
                     'cv' => $resume,
+                    'job_description' => $jobDescription,
                 ],
                 JSON_UNESCAPED_UNICODE
                     | JSON_UNESCAPED_SLASHES
                     | JSON_THROW_ON_ERROR
             );
         } catch (JsonException $e) {
-            Log::error('ATS analysis: failed to encode outbound CV payload', [
+            Log::error('Job match analysis: failed to encode outbound payload', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
             ]);
 
             throw new ATSAnalysisException(
-                'Failed to encode CV payload: ' . $e->getMessage(),
+                'Failed to encode payload: ' . $e->getMessage(),
                 previous: $e,
                 requestId: $requestId,
             );
@@ -152,7 +110,13 @@ class ATSAnalyzerService
                 ->connectTimeout(10)
                 ->retry(
                     2,
-                    1000,
+                    function (int $attempt, \Throwable $exception): int {
+                        return match ($attempt) {
+                            1 => 1000,
+                            2 => 3000,
+                            default => 3000,
+                        };
+                    },
                     function (\Throwable $exception) {
                         if ($exception instanceof ConnectionException) {
                             return true;
@@ -179,13 +143,11 @@ class ATSAnalyzerService
                         'model' => $model,
                         'store' => false,
 
-                        // Deterministic-as-possible sampling. This alone does not
-                        // guarantee identical output on every call (OpenAI does not
-                        // promise bit-for-bit determinism even at temperature 0),
-                        // which is why the result is also cached by CV content hash
-                        // below — that's what actually guarantees "same resume, same
-                        // score" from the client's point of view.
-                        'temperature' => 0,
+                        // Low temperature — cuts down on run-to-run drift
+                        // for the same input. Caching (above) is what
+                        // *guarantees* stability; this just makes a fresh
+                        // (cache-miss) analysis less noisy on its own.
+                        'temperature' => 0.2,
 
                         'input' => [
                             [
@@ -211,7 +173,7 @@ class ATSAnalyzerService
                         'text' => [
                             'format' => [
                                 'type' => 'json_schema',
-                                'name' => 'ats_analysis',
+                                'name' => 'job_match_analysis',
                                 'strict' => true,
                                 'schema' => $this->schema(),
                             ],
@@ -219,7 +181,7 @@ class ATSAnalyzerService
                     ]
                 );
         } catch (ConnectionException $e) {
-            Log::error('ATS analysis: connection failure to OpenAI', [
+            Log::error('Job match analysis: connection failure to OpenAI', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
                 'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
@@ -235,8 +197,7 @@ class ATSAnalyzerService
         $durationMs = (int) ((microtime(true) - $startedAt) * 1000);
 
         if ($response->failed()) {
-            // Full provider body goes to logs only — never to the caller.
-            Log::error('ATS analysis: OpenAI request failed', [
+            Log::error('Job match analysis: OpenAI request failed', [
                 'request_id' => $requestId,
                 'status' => $response->status(),
                 'body' => $this->truncateForLog($response->body()),
@@ -244,11 +205,11 @@ class ATSAnalyzerService
             ]);
 
             $safeMessage = $response->status() === 429
-                ? 'CV analysis is receiving high demand right now. Please try again in a moment.'
-                : 'CV analysis is temporarily unavailable. Please try again shortly.';
+                ? 'Job match analysis is receiving high demand right now. Please try again in a moment.'
+                : 'Job match analysis is temporarily unavailable. Please try again shortly.';
 
             throw new ATSAnalysisException(
-                "AI ATS analysis failed: {$response->status()} - {$response->body()}",
+                "Job match analysis failed: {$response->status()} - {$response->body()}",
                 safeMessage: $safeMessage,
                 requestId: $requestId,
             );
@@ -257,13 +218,13 @@ class ATSAnalyzerService
         $result = $response->json();
 
         if (!is_array($result)) {
-            Log::error('ATS analysis: non-array API response', [
+            Log::error('Job match analysis: non-array API response', [
                 'request_id' => $requestId,
                 'duration_ms' => $durationMs,
             ]);
 
             throw new ATSAnalysisException(
-                'AI ATS analysis returned an invalid API response.',
+                'Job match analysis returned an invalid API response.',
                 requestId: $requestId,
             );
         }
@@ -271,13 +232,13 @@ class ATSAnalyzerService
         $output = $this->extractOutputText($result);
 
         if ($output === '') {
-            Log::error('ATS analysis: empty output_text from OpenAI', [
+            Log::error('Job match analysis: empty output_text from OpenAI', [
                 'request_id' => $requestId,
                 'duration_ms' => $durationMs,
             ]);
 
             throw new ATSAnalysisException(
-                'AI ATS analysis returned an empty response.',
+                'Job match analysis returned an empty response.',
                 requestId: $requestId,
             );
         }
@@ -285,32 +246,32 @@ class ATSAnalyzerService
         try {
             $analysis = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            Log::error('ATS analysis: model output was not valid JSON', [
+            Log::error('Job match analysis: model output was not valid JSON', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
                 'duration_ms' => $durationMs,
             ]);
 
             throw new ATSAnalysisException(
-                'AI ATS analysis returned invalid JSON: ' . $e->getMessage(),
+                'Job match analysis returned invalid JSON: ' . $e->getMessage(),
                 previous: $e,
                 requestId: $requestId,
             );
         }
 
         if (!is_array($analysis)) {
-            Log::error('ATS analysis: decoded output was not a JSON object', [
+            Log::error('Job match analysis: decoded output was not a JSON object', [
                 'request_id' => $requestId,
                 'duration_ms' => $durationMs,
             ]);
 
             throw new ATSAnalysisException(
-                'AI ATS analysis returned an invalid JSON structure.',
+                'Job match analysis returned an invalid JSON structure.',
                 requestId: $requestId,
             );
         }
 
-        Log::info('ATS analysis completed', [
+        Log::info('Job match analysis completed', [
             'request_id' => $requestId,
             'duration_ms' => $durationMs,
             'model' => $model,
@@ -318,62 +279,40 @@ class ATSAnalyzerService
 
         $normalized = $this->normalizeResult($analysis, $requestId);
 
-        Cache::put($cacheKey, $normalized, self::RESULT_CACHE_TTL_SECONDS);
+        Cache::put($cacheKey, $normalized, self::CACHE_TTL_SECONDS);
 
         return $normalized;
     }
 
     /**
-     * Deterministic cache key derived from the CV content actually sent to
-     * the model — not the resume's database id and not a per-request id.
-     * Same normalized content -> same key -> same cached score, regardless
-     * of how many times the user re-runs the check.
-     */
-    private function resultCacheKey(array $resume): string
-    {
-        $canonical = json_encode($resume, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-
-        return 'ats_analysis:' . hash('sha256', $canonical);
-    }
-
-    /**
-     * Look up known structural facts for a template. Unknown/missing
-     * templates get an explicit "unknown" marker rather than being silently
-     * treated as single-column/no-tables — the model is instructed not to
-     * guess, so we don't want to hand it a false "clean" default either.
-     */
-    private function templateFormattingFacts(?string $template): array
-    {
-        if ($template === null || !isset(self::TEMPLATE_FORMATTING_PROFILES[$template])) {
-            return [
-                'template_id' => $template ?? 'unknown',
-                'known' => false,
-            ];
-        }
-
-        return [
-            'template_id' => $template,
-            'known' => true,
-            ...self::TEMPLATE_FORMATTING_PROFILES[$template],
-        ];
-    }
-
-    /**
-     * Reject empty or content-free CVs before spending a paid API call.
+     * Content-addressed cache key — a hash of the exact normalized CV plus
+     * the exact job description text. Any edit to either produces a
+     * different key, so a changed CV always triggers a fresh analysis and
+     * an unchanged CV always returns the exact same cached score.
      *
      * @param array<string, mixed> $resume
      */
-    private function assertHasContent(array $resume, string $requestId): void
+    private function cacheKey(array $resume, string $jobDescription): string
     {
-        $hasContent =
+        $fingerprint = hash('sha256', json_encode($resume) . '|' . $jobDescription);
+
+        return "job_match_analysis:{$fingerprint}";
+    }
+
+    /**
+     * @param array<string, mixed> $resume
+     */
+    private function assertHasContent(array $resume, string $jobDescription, string $requestId): void
+    {
+        $cvHasContent =
             $resume['summary'] !== ''
             || $resume['candidate']['first_name'] !== ''
             || !empty($resume['experience'])
             || !empty($resume['skills'])
             || !empty($resume['education']);
 
-        if (!$hasContent) {
-            Log::warning('ATS analysis: rejected empty/content-free CV', [
+        if (!$cvHasContent) {
+            Log::warning('Job match analysis: rejected empty/content-free CV', [
                 'request_id' => $requestId,
             ]);
 
@@ -383,112 +322,98 @@ class ATSAnalyzerService
                 requestId: $requestId,
             );
         }
+
+        if (trim($jobDescription) === '' || mb_strlen(trim($jobDescription)) < 40) {
+            Log::warning('Job match analysis: rejected missing/too-short job description', [
+                'request_id' => $requestId,
+                'length' => mb_strlen(trim($jobDescription)),
+            ]);
+
+            throw new ATSAnalysisException(
+                'Job description is missing or too short to analyze against.',
+                safeMessage: 'Please paste the full job description — a title alone isn\'t enough to score against.',
+                requestId: $requestId,
+            );
+        }
     }
 
-    /**
-     * System instructions for the ATS model.
-     */
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
-You are a production-grade ATS resume analysis engine.
+You are a production-grade ATS job-match analysis engine.
 
-Analyze the supplied CV as an ATS and resume screening specialist.
+You are given a candidate's CV and a specific job description. Score
+how well the CV matches THIS job, as an ATS and recruiter screening
+specialist would.
 
 Your analysis must be evidence-based and must only use information
-present in the supplied CV.
+present in the supplied CV and job description. Do not invent
+experience, skills, education, achievements, technologies, dates,
+responsibilities, or job requirements that are not actually present
+in the source text.
 
 IMPORTANT RULES:
 
-1. Do not use a fixed hardcoded keyword list.
-2. Do not assume every profession requires the same skills.
-3. Infer the candidate's likely professional domain from the CV.
-4. Evaluate the actual content present in the CV.
-5. Do not invent experience, skills, education, achievements,
-   certifications, technologies, dates or responsibilities.
-6. Every weakness or suggestion must be supported by evidence from
-   the supplied CV.
-7. Do not penalize information that is not reasonably expected for
-   the candidate's professional domain.
-8. Evaluate ATS readiness, not the candidate's overall employability.
-9. Do not claim that a particular ATS vendor uses this exact score.
-10. Do not calculate a job-match percentage because no job description
-    is supplied.
+1. Extract actual requirements from the job description — required
+   skills, qualifications, experience level, responsibilities,
+   domain terms. Do not use a fixed hardcoded requirements list.
+2. Distinguish requirements the job description marks as required
+   / must-have from those that read as preferred / nice-to-have.
+3. Compare the CV against those extracted requirements, not against
+   a generic industry checklist.
+4. Every matched item and every gap must be traceable to specific
+   text in the CV and/or the job description.
+5. Do not penalize the CV for lacking something the job description
+   itself never asked for.
+6. Do not assume years of experience, seniority, or specific tools
+   that are not stated in either document.
+7. Evaluate ATS/keyword match readiness, not general employability
+   or the candidate's overall career quality.
+8. Do not claim a specific ATS vendor uses this exact scoring method.
+9. Be honest about weak matches. A low score with clear, evidenced
+   reasoning is more useful than an inflated one.
 
-EVALUATE:
+EVALUATE AGAINST THE JOB DESCRIPTION:
 
-- Contact information
-- Candidate name
-- Professional summary
-- Work experience
-- Job titles
-- Employment dates
-- Experience descriptions
-- Skills
-- Education
-- Certifications when present
-- Projects when present
-- Languages when present
-- Domain-specific terminology
-- Keywords and professional concepts
-- Action verbs
-- Quantified achievements
-- Repetition
-- Generic or vague statements
-- Missing information
-- ATS structure/parsing readiness
-- Overall content quality
+- Required skills and technologies mentioned in the CV vs the JD
+- Preferred/nice-to-have skills mentioned in the CV vs the JD
+- Years of experience and seniority level alignment
+- Required qualifications (degree, certification, license) if the
+  JD specifies them
+- Job title / role alignment
+- Domain and industry terminology overlap
+- Core responsibilities in the JD that the CV's experience actually
+  demonstrates evidence of handling
+- ATS structural readiness (same criteria as a standalone ATS scan:
+  parseable structure, no evidence of missing critical sections)
+- Overall content quality and clarity relative to what the JD asks for
 
 KEYWORD ANALYSIS:
 
-Extract important terms from the actual CV.
+From the job description, extract the meaningful requirement terms
+(skills, tools, methodologies, qualifications, domain terms).
 
-Identify:
+For each extracted term, determine whether the CV provides evidence
+of it. Sort into:
 
-- professional terminology
-- technologies
-- tools
-- methodologies
-- responsibilities
-- industry terminology
-- repeated concepts
-- domain-specific skills
+- matched: terms found with real supporting evidence in the CV
+- missing_critical: JD terms described as required/must-have that
+  the CV shows no evidence of
+- missing_nice_to_have: JD terms described as preferred/bonus that
+  the CV shows no evidence of
 
-Do not compare the CV against a generic predefined keyword database.
-
-If no job description is supplied, do not pretend to calculate
-keyword match against a job.
-
-ATS FORMATTING:
-
-Only evaluate formatting information that can reasonably be inferred
-from the supplied structured CV data.
-
-Do NOT claim that fonts, columns, icons, tables, graphics, colors,
-headers or visual design are problematic unless the supplied data
-actually provides evidence about them.
-
-The CV JSON includes a `template_formatting` object. When
-`known` is true, treat its `tables`, `columns` and
-`graphics_or_icons` fields as ground-truth evidence about the
-resume's actual layout, and factor them into the ats_formatting
-score (e.g. multiple tables or more than one column are common
-causes of ATS parsing errors). When `known` is false, you have no
-formatting evidence — do not guess.
+Do not pad these lists with terms not actually present in the job
+description.
 
 SCORING:
 
-The total score must be exactly 100.
+The total score must be exactly 100. Use these maximum category
+scores:
 
-Use these maximum category scores:
-
-- Contact information: 10
-- Professional summary: 10
-- Work experience: 25
-- Skills: 15
-- Education: 10
-- Keyword/topic coverage: 10
-- Achievements/action verbs: 5
+- Keyword & skill match: 30
+- Experience relevance: 25
+- Qualifications match: 20
+- Title & seniority alignment: 10
 - ATS structure/parsing readiness: 10
 - Content quality: 5
 
@@ -497,44 +422,44 @@ These category scores MUST add up to exactly 100.
 For each category:
 
 - score must be between 0 and its maximum
-- assessment must be concise
+- assessment must be concise and specific to this job description,
+  not generic
 - strengths must contain only supported strengths
-- issues must contain only supported issues
-- matched_items must contain items actually present
-- missing_items must contain only genuinely missing or weak items
+- issues must contain only supported gaps
+- matched_items must contain items actually present in both documents
+- missing_items must contain only genuinely missing or weak items,
+  referenced against what the job description actually asks for
 
 SUGGESTIONS:
 
-Return concise, actionable suggestions.
+Return concise, actionable suggestions for improving this CV's match
+to THIS specific job. Every suggestion must cite evidence from the
+job description and/or the CV. Prioritize suggestions that close
+missing_critical gaps first.
 
-Every suggestion must include evidence from the supplied CV.
+RECOMMENDATION:
 
-Do not recommend adding a skill merely because it is popular.
-
-Only recommend adding a skill, keyword, achievement or section when
-the CV provides a reasonable basis for the recommendation.
+Based on the final score, set recommendation to one of:
+- "strong_match" for 80-100
+- "possible_match" for 55-79
+- "weak_match" for 0-54
 
 STATS:
 
-Calculate statistics from the supplied CV as accurately as possible:
+Calculate as accurately as possible from the supplied documents:
 
-- experience_entries
-- skills_count
-- education_entries
-- keyword_matches
-- action_verbs
-- quantified_achievements
-- word_count
-
-keyword_matches means the number of meaningful professional terms
-identified from the candidate's own CV, not matches against a
-predefined keyword database.
+- jd_requirement_count (meaningful requirement terms extracted from JD)
+- matched_keyword_count
+- missing_critical_count
+- missing_nice_to_have_count
+- experience_entries (from the CV)
+- quantified_achievements (from the CV)
+- word_count (of the CV)
 
 FINAL SCORE:
 
-Return a score from 0 through 100.
-
-The score must equal the sum of all category scores.
+Return a score from 0 through 100, equal to the sum of all category
+scores.
 
 Grade mapping:
 
@@ -548,8 +473,6 @@ PROMPT;
     }
 
     /**
-     * Structured output JSON schema.
-     *
      * @return array<string, mixed>
      */
     private function schema(): array
@@ -559,55 +482,54 @@ PROMPT;
             'additionalProperties' => false,
 
             'properties' => [
-                'score' => [
-                    'type' => 'integer',
-                    'minimum' => 0,
-                    'maximum' => 100,
-                ],
+                'score' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
 
                 'grade' => [
                     'type' => 'string',
-                    'enum' => [
-                        'Excellent',
-                        'Very Good',
-                        'Good',
-                        'Needs Improvement',
-                        'Weak',
-                        'Poor',
-                    ],
+                    'enum' => ['Excellent', 'Very Good', 'Good', 'Needs Improvement', 'Weak', 'Poor'],
                 ],
 
-                'summary' => [
+                'recommendation' => [
                     'type' => 'string',
+                    'enum' => ['strong_match', 'possible_match', 'weak_match'],
                 ],
+
+                'summary' => ['type' => 'string'],
 
                 'categories' => [
                     'type' => 'object',
                     'additionalProperties' => false,
 
                     'properties' => [
-                        'contact_information' => $this->categorySchema(),
-                        'professional_summary' => $this->categorySchema(),
-                        'work_experience' => $this->categorySchema(),
-                        'skills' => $this->categorySchema(),
-                        'education' => $this->categorySchema(),
-                        'keywords' => $this->categorySchema(),
-                        'achievements' => $this->categorySchema(),
+                        'keyword_skill_match' => $this->categorySchema(),
+                        'experience_relevance' => $this->categorySchema(),
+                        'qualifications_match' => $this->categorySchema(),
+                        'title_seniority_alignment' => $this->categorySchema(),
                         'ats_formatting' => $this->categorySchema(),
                         'content_quality' => $this->categorySchema(),
                     ],
 
                     'required' => [
-                        'contact_information',
-                        'professional_summary',
-                        'work_experience',
-                        'skills',
-                        'education',
-                        'keywords',
-                        'achievements',
+                        'keyword_skill_match',
+                        'experience_relevance',
+                        'qualifications_match',
+                        'title_seniority_alignment',
                         'ats_formatting',
                         'content_quality',
                     ],
+                ],
+
+                'keyword_analysis' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+
+                    'properties' => [
+                        'matched' => ['type' => 'array', 'items' => ['type' => 'string']],
+                        'missing_critical' => ['type' => 'array', 'items' => ['type' => 'string']],
+                        'missing_nice_to_have' => ['type' => 'array', 'items' => ['type' => 'string']],
+                    ],
+
+                    'required' => ['matched', 'missing_critical', 'missing_nice_to_have'],
                 ],
 
                 'suggestions' => [
@@ -618,23 +540,14 @@ PROMPT;
                         'additionalProperties' => false,
 
                         'properties' => [
-                            'priority' => [
-                                'type' => 'string',
-                                'enum' => ['high', 'medium', 'low'],
-                            ],
+                            'priority' => ['type' => 'string', 'enum' => ['high', 'medium', 'low']],
                             'category' => ['type' => 'string'],
                             'title' => ['type' => 'string'],
                             'description' => ['type' => 'string'],
                             'evidence' => ['type' => 'string'],
                         ],
 
-                        'required' => [
-                            'priority',
-                            'category',
-                            'title',
-                            'description',
-                            'evidence',
-                        ],
+                        'required' => ['priority', 'category', 'title', 'description', 'evidence'],
                     ],
                 ],
 
@@ -643,21 +556,21 @@ PROMPT;
                     'additionalProperties' => false,
 
                     'properties' => [
+                        'jd_requirement_count' => ['type' => 'integer', 'minimum' => 0],
+                        'matched_keyword_count' => ['type' => 'integer', 'minimum' => 0],
+                        'missing_critical_count' => ['type' => 'integer', 'minimum' => 0],
+                        'missing_nice_to_have_count' => ['type' => 'integer', 'minimum' => 0],
                         'experience_entries' => ['type' => 'integer', 'minimum' => 0],
-                        'skills_count' => ['type' => 'integer', 'minimum' => 0],
-                        'education_entries' => ['type' => 'integer', 'minimum' => 0],
-                        'keyword_matches' => ['type' => 'integer', 'minimum' => 0],
-                        'action_verbs' => ['type' => 'integer', 'minimum' => 0],
                         'quantified_achievements' => ['type' => 'integer', 'minimum' => 0],
                         'word_count' => ['type' => 'integer', 'minimum' => 0],
                     ],
 
                     'required' => [
+                        'jd_requirement_count',
+                        'matched_keyword_count',
+                        'missing_critical_count',
+                        'missing_nice_to_have_count',
                         'experience_entries',
-                        'skills_count',
-                        'education_entries',
-                        'keyword_matches',
-                        'action_verbs',
                         'quantified_achievements',
                         'word_count',
                     ],
@@ -667,8 +580,10 @@ PROMPT;
             'required' => [
                 'score',
                 'grade',
+                'recommendation',
                 'summary',
                 'categories',
+                'keyword_analysis',
                 'suggestions',
                 'stats',
             ],
@@ -676,8 +591,6 @@ PROMPT;
     }
 
     /**
-     * Schema for an individual scoring category.
-     *
      * @return array<string, mixed>
      */
     private function categorySchema(): array
@@ -711,7 +624,8 @@ PROMPT;
     }
 
     /**
-     * Normalize incoming CV data into a predictable structure.
+     * Reuses the same normalization contract as ATSAnalyzerService so both
+     * services accept identical parser output.
      *
      * @param array<string, mixed> $cv
      * @return array<string, mixed>
@@ -790,26 +704,28 @@ PROMPT;
     }
 
     /**
-     * Recursively cap any string value in a list to MAX_FIELD_LENGTH so a
-     * single malformed field can't blow up token cost or context size.
-     *
      * @param array<int|string, mixed> $items
      * @return array<int|string, mixed>
      */
     private function capList(array $items): array
     {
         array_walk_recursive($items, function (&$value): void {
-            if (is_string($value) && mb_strlen($value) > self::MAX_FIELD_LENGTH) {
-                $value = mb_substr($value, 0, self::MAX_FIELD_LENGTH) . '…';
+            if (is_string($value)) {
+                $value = $this->capText($value, self::MAX_CV_FIELD_LENGTH);
             }
         });
 
         return $items;
     }
 
+    private function capText(string $value, int $limit): string
+    {
+        return mb_strlen($value) > $limit
+            ? mb_substr($value, 0, $limit) . '…'
+            : $value;
+    }
+
     /**
-     * Normalize and validate AI result.
-     *
      * @param array<string, mixed> $result
      * @return array<string, mixed>
      */
@@ -822,13 +738,10 @@ PROMPT;
         }
 
         $categoryMaxScores = [
-            'contact_information' => 10,
-            'professional_summary' => 10,
-            'work_experience' => 25,
-            'skills' => 15,
-            'education' => 10,
-            'keywords' => 10,
-            'achievements' => 5,
+            'keyword_skill_match' => 30,
+            'experience_relevance' => 25,
+            'qualifications_match' => 20,
+            'title_seniority_alignment' => 10,
             'ats_formatting' => 10,
             'content_quality' => 5,
         ];
@@ -856,21 +769,20 @@ PROMPT;
             $totalScore += $categoryScore;
         }
 
-        /*
-         * Use the category total as the authoritative score. This prevents
-         * the model from returning score=92 while categories total 74.
-         */
         $score = max(0, min(100, $totalScore));
 
         if ($rawModelScore >= 0 && abs($rawModelScore - $score) > 5) {
-            // Model's own arithmetic drifted from its category breakdown by
-            // more than a rounding margin — not fatal, but worth knowing
-            // about if it happens often (signals prompt drift).
-            Log::warning('ATS analysis: model score/category total mismatch', [
+            Log::warning('Job match analysis: model score/category total mismatch', [
                 'request_id' => $requestId,
                 'model_score' => $rawModelScore,
                 'category_total' => $score,
             ]);
+        }
+
+        $keywordAnalysis = $result['keyword_analysis'] ?? [];
+
+        if (!is_array($keywordAnalysis)) {
+            $keywordAnalysis = [];
         }
 
         $suggestions = $result['suggestions'] ?? [];
@@ -885,21 +797,41 @@ PROMPT;
             $stats = [];
         }
 
+        $recommendation = $result['recommendation'] ?? null;
+
+        if (!in_array($recommendation, ['strong_match', 'possible_match', 'weak_match'], true)) {
+            // Derive from score if the model omitted/mangled it, rather
+            // than trusting an unvalidated enum straight through.
+            $recommendation = match (true) {
+                $score >= 80 => 'strong_match',
+                $score >= 55 => 'possible_match',
+                default => 'weak_match',
+            };
+        }
+
         return [
             'score' => $score,
             'max_score' => 100,
             'percentage' => $score,
             'grade' => $this->grade($score),
+            'recommendation' => $recommendation,
             'summary' => (string) ($result['summary'] ?? ''),
             'categories' => $categories,
+
+            'keyword_analysis' => [
+                'matched' => is_array($keywordAnalysis['matched'] ?? null) ? $keywordAnalysis['matched'] : [],
+                'missing_critical' => is_array($keywordAnalysis['missing_critical'] ?? null) ? $keywordAnalysis['missing_critical'] : [],
+                'missing_nice_to_have' => is_array($keywordAnalysis['missing_nice_to_have'] ?? null) ? $keywordAnalysis['missing_nice_to_have'] : [],
+            ],
+
             'suggestions' => $suggestions,
 
             'stats' => [
+                'jd_requirement_count' => max(0, (int) ($stats['jd_requirement_count'] ?? 0)),
+                'matched_keyword_count' => max(0, (int) ($stats['matched_keyword_count'] ?? 0)),
+                'missing_critical_count' => max(0, (int) ($stats['missing_critical_count'] ?? 0)),
+                'missing_nice_to_have_count' => max(0, (int) ($stats['missing_nice_to_have_count'] ?? 0)),
                 'experience_entries' => max(0, (int) ($stats['experience_entries'] ?? 0)),
-                'skills_count' => max(0, (int) ($stats['skills_count'] ?? 0)),
-                'education_entries' => max(0, (int) ($stats['education_entries'] ?? 0)),
-                'keyword_matches' => max(0, (int) ($stats['keyword_matches'] ?? 0)),
-                'action_verbs' => max(0, (int) ($stats['action_verbs'] ?? 0)),
                 'quantified_achievements' => max(0, (int) ($stats['quantified_achievements'] ?? 0)),
                 'word_count' => max(0, (int) ($stats['word_count'] ?? 0)),
             ],
@@ -907,8 +839,6 @@ PROMPT;
     }
 
     /**
-     * Safely extract structured JSON text from a Responses API result.
-     *
      * @param array<string, mixed> $response
      */
     private function extractOutputText(array $response): string
@@ -936,9 +866,6 @@ PROMPT;
         return '';
     }
 
-    /**
-     * Convert arbitrary CV values into text.
-     */
     private function text(mixed $value): string
     {
         if ($value === null) {
@@ -974,9 +901,6 @@ PROMPT;
         return '';
     }
 
-    /**
-     * Create a safe empty category.
-     */
     private function emptyCategory(string $key, int $maxScore): array
     {
         return [
@@ -991,28 +915,19 @@ PROMPT;
         ];
     }
 
-    /**
-     * Human-readable category label.
-     */
     private function categoryLabel(string $key): string
     {
         return match ($key) {
-            'contact_information' => 'Contact Information',
-            'professional_summary' => 'Professional Summary',
-            'work_experience' => 'Work Experience',
-            'skills' => 'Skills',
-            'education' => 'Education',
-            'keywords' => 'Keywords',
-            'achievements' => 'Achievements & Action Verbs',
+            'keyword_skill_match' => 'Keyword & Skill Match',
+            'experience_relevance' => 'Experience Relevance',
+            'qualifications_match' => 'Qualifications Match',
+            'title_seniority_alignment' => 'Title & Seniority Alignment',
             'ats_formatting' => 'ATS Formatting',
             'content_quality' => 'Content Quality',
             default => ucwords(str_replace('_', ' ', $key)),
         };
     }
 
-    /**
-     * Convert score into grade.
-     */
     private function grade(int $score): string
     {
         return match (true) {
@@ -1025,82 +940,10 @@ PROMPT;
         };
     }
 
-    /**
-     * Keep provider error bodies out of logs beyond a sane size —
-     * some error responses embed large HTML/debug payloads.
-     */
     private function truncateForLog(string $body, int $limit = 2000): string
     {
         return mb_strlen($body) > $limit
             ? mb_substr($body, 0, $limit) . '… [truncated]'
             : $body;
     }
-
-    private function formattingCategory(array $facts): array
-{
-    $score = 10;
-
-    $issues = [];
-    $strengths = [];
-
-    if ((int) ($facts['columns'] ?? 1) > 1) {
-        $score -= 3;
-        $issues[] = 'Multiple columns may reduce ATS parsing reliability.';
-    } else {
-        $strengths[] = 'Single-column structure is ATS-friendly.';
-    }
-
-    if ((int) ($facts['tables'] ?? 0) > 0) {
-        $score -= 3;
-        $issues[] = 'Tables may interfere with ATS parsing.';
-    }
-
-    if (($facts['graphics_or_icons'] ?? false) === true) {
-        $score -= 2;
-        $issues[] = 'Icons may not be reliably parsed by some ATS systems.';
-
-        $score -= 2;
-        $issues[] = 'Graphics may reduce ATS parsing reliability.';
-    }
-
-    $score = max(0, min(10, $score));
-
-    return [
-        'label' => 'ATS Formatting',
-        'score' => $score,
-        'max_score' => 10,
-        'assessment' => $score >= 8
-            ? 'The template has an ATS-friendly structure.'
-            : 'The template may have some ATS parsing risks.',
-        'strengths' => $strengths,
-        'issues' => $issues,
-        'matched_items' => [],
-        'missing_items' => [],
-    ];
-}
-
-private function applyFormatting(
-    array $contentResult,
-    array $formattingCategory,
-    array $templateFacts
-): array {
-    $contentResult['categories']['ats_formatting'] = $formattingCategory;
-
-    $totalScore = 0;
-
-    foreach ($contentResult['categories'] as $category) {
-        $totalScore += (int) ($category['score'] ?? 0);
-    }
-
-    $totalScore = max(0, min(100, $totalScore));
-
-    $contentResult['score'] = $totalScore;
-    $contentResult['max_score'] = 100;
-    $contentResult['percentage'] = $totalScore;
-    $contentResult['grade'] = $this->grade($totalScore);
-
-    $contentResult['template'] = $templateFacts;
-
-    return $contentResult;
-}
 }

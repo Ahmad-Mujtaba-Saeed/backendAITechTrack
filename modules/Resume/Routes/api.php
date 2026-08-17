@@ -16,6 +16,7 @@ Route::middleware(['auth:sanctum'])->prefix('/resume')
 
     Route::get('/{id}/download', [ResumeController::class, 'download']);
     Route::post('/{id}/ats-check', [ATSController::class, 'check']);
+    Route::post('/{id}/job-match', [ATSController::class, 'matchJob']);
 });
 
 Route::get('/resume/{id}/download-doc', [ResumeController::class, 'downloadDoc']);
