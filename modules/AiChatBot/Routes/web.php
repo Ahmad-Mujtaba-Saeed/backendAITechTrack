@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\AiChatBot\Http\Controllers\ChatBotController;
-use Modules\AiChatBot\Http\Conrollers\Internal\AgentTokenController;
+use Modules\AiChatBot\Http\Controllers\Internal\AgentTokenController;
 use Modules\AiChatBot\Http\Controllers\Internal\AgentApiController;
 
 Route::middleware(['auth:sanctum'])->prefix('/ai-chatbot')
@@ -20,12 +20,11 @@ Route::prefix('internal')->group(function () {
         });
     });
 
-    Route::prefix('resume')->middleware('agent:resume.manage')->group(function (){
+    Route::prefix('resume')->middleware('agent:resume.manage')->group(function () {
         Route::post('/create-empty', [AgentApiController::class, 'createEmpty']);
     });
 
     Route::middleware('agent:subscription.manage')->group(function () {
         Route::get('/get-user-subscription', [AgentApiController::class, 'getUserSubscription']);
-        Route::post('/cancel-user-subscription', [AgentAiController::class, 'cancelUserSubscription']);
+        Route::post('/cancel-user-subscription', [AgentApiController::class, 'cancelUserSubscription']);
     });
-}

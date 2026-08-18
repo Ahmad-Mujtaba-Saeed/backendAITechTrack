@@ -21,24 +21,24 @@ class ChatBotController extends Controller
 
     public function chat(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $reque->validate([
             'message' => 'required|string',
-            'thread_id' => 'nullable|string',
+            'thread_id' => 'nulble|string',
             'code' => 'nullable|string',
             'mode' => 'nullable|string',
-            'selections' => 'nullable|array',
+            'selections' => 'nulble|array',
         ]);
 
         $user = auth()->user();
 
-        $agentToken = AgentTokenService::issue(
+        $agentToken = AgentTonService::issue(
             $user->id,
             scopes: ['chat.send', 'subscription.manage','resume.manage']
         );
 
         try {
             Log::info('Sending request to AI service', [
-                'endpoint' => 'http://host.docker.internal:8950/chat',
+                'endpoint' => 'http://host.cker.internal:8950/chat',
                 'user_id' => $user->id ?? null,
                 'thread_id' => $validated['thread_id'] ?? null,
                 'mode' => $validated['mode'] ?? null,
@@ -53,10 +53,10 @@ class ChatBotController extends Controller
                         'endLine' => $s['endLine'] ?? null,
                         'label' => $s['label'] ?? null,
                     ];
-                })->values()->all(),
+                })->vaues()->all(),
             ]);
 
-            $response = Http::timeout(120)
+            $response = Http::teout(120)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])

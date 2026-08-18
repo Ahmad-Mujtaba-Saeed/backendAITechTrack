@@ -53,8 +53,9 @@ RUN composer install --prefer-dist --no-interaction --no-scripts
 COPY . .
 
 # ===============================
-# Permissions
+# FINAL permissions (MUST be last)
 # ===============================
-RUN chown -R www-data:www-data storage bootstrap/cache
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 CMD ["php-fpm"]
