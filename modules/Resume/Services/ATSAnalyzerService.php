@@ -12,34 +12,13 @@ use Modules\Resume\Exceptions\ATSAnalysisException;
 
 class ATSAnalyzerService
 {
-    /**
-     * HTTP status codes worth retrying — transient provider-side issues.
-     * 4xx client errors (bad request, auth) are deliberately excluded:
-     * retrying those just burns quota for a guaranteed repeat failure.
-     */
+
     private const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
 
-    /**
-     * Hard cap on any single free-text field sent to the model.
-     * Protects against context blow-up / runaway token cost from a
-     * pathological parser output (e.g. a mis-parsed multi-page CV
-     * dumped into one field).
-     */
     private const MAX_FIELD_LENGTH = 4000;
 
-    /**
-     * How long a cached result for an unchanged CV stays valid.
-     * Long-lived on purpose: the point of this cache is "same resume,
-     * same score", not freshness.
-     */
     private const RESULT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-    /**
-     * Known structural properties of each resume template, sourced from the
-     * actual Blade files (not guessed) — this is the "evidence" the system
-     * prompt requires before the model may say anything about layout/format.
-     * Keep this in sync with modules/Resume/resources/views/pdfs/*.blade.php.
-     */
     private const TEMPLATE_FORMATTING_PROFILES = [
         'classic' => ['tables' => 0, 'columns' => 1, 'graphics_or_icons' => false],
         'luxe' => ['tables' => 0, 'columns' => 1, 'graphics_or_icons' => false],
@@ -47,18 +26,6 @@ class ATSAnalyzerService
         'modern' => ['tables' => 3, 'columns' => 2, 'graphics_or_icons' => true],
     ];
 
-    /**
-     * Analyze a CV for ATS readiness.
-     *
-     * @param array<string, mixed> $cv
-     * @param string|null $requestId Correlation id for logs; caller-supplied
-     *                               (e.g. a queue job id) so a support ticket
-     *                               can be traced end to end.
-     * @return array<string, mixed>
-     *
-     * @throws ATSAnalysisException on any failure. getMessage() has full
-     *         internal detail for logs; getSafeMessage() is safe to expose.
-     */
     public function analyze(array $cv, ?string $requestId = null, ?string $template = null): array
     {
         $requestId ??= (string) \Illuminate\Support\Str::uuid();
@@ -67,13 +34,6 @@ class ATSAnalyzerService
 
         $this->assertHasContent($resume, $requestId);
 
-        // Content (domain/skills/experience/etc.) and formatting (template
-        // layout) are scored independently on purpose:
-        //   - the content score depends only on $resume, never on $template,
-        //     so changing the template alone can never move it or trigger a
-        //     fresh OpenAI call.
-        //   - the formatting score is computed locally in PHP from known
-        //     template facts, so it's instant and 100% deterministic.
         $templateFacts = $this->templateFormattingFacts($template);
 
         $contentResult = $this->analyzeContent($resume, $requestId);
@@ -82,14 +42,6 @@ class ATSAnalyzerService
         return $this->applyFormatting($contentResult, $formattingCategory, $templateFacts);
     }
 
-    /**
-     * Domain-aware content analysis (everything except page layout).
-     * Cached purely by CV content, so "same CV -> same content score"
-     * holds regardless of which template is selected.
-     *
-     * @param array<string, mixed> $resume
-     * @return array<string, mixed>
-     */
     private function analyzeContent(array $resume, string $requestId): array
     {
         $cacheKey = $this->resultCacheKey($resume);
@@ -179,12 +131,6 @@ class ATSAnalyzerService
                         'model' => $model,
                         'store' => false,
 
-                        // Deterministic-as-possible sampling. This alone does not
-                        // guarantee identical output on every call (OpenAI does not
-                        // promise bit-for-bit determinism even at temperature 0),
-                        // which is why the result is also cached by CV content hash
-                        // below — that's what actually guarantees "same resume, same
-                        // score" from the client's point of view.
                         'temperature' => 0,
 
                         'input' => [
@@ -219,11 +165,6 @@ class ATSAnalyzerService
                     ]
                 );
         } catch (ConnectionException $e) {
-            Log::error('ATS analysis: connection failure to OpenAI', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
-            ]);
 
             throw new ATSAnalysisException(
                 'Connection to AI provider failed: ' . $e->getMessage(),
@@ -236,13 +177,7 @@ class ATSAnalyzerService
 
         if ($response->failed()) {
             // Full provider body goes to logs only — never to the caller.
-            Log::error('ATS analysis: OpenAI request failed', [
-                'request_id' => $requestId,
-                'status' => $response->status(),
-                'body' => $this->truncateForLog($response->body()),
-                'duration_ms' => $durationMs,
-            ]);
-
+            
             $safeMessage = $response->status() === 429
                 ? 'CV analysis is receiving high demand right now. Please try again in a moment.'
                 : 'CV analysis is temporarily unavailable. Please try again shortly.';
@@ -323,12 +258,6 @@ class ATSAnalyzerService
         return $normalized;
     }
 
-    /**
-     * Deterministic cache key derived from the CV content actually sent to
-     * the model — not the resume's database id and not a per-request id.
-     * Same normalized content -> same key -> same cached score, regardless
-     * of how many times the user re-runs the check.
-     */
     private function resultCacheKey(array $resume): string
     {
         $canonical = json_encode($resume, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -336,12 +265,6 @@ class ATSAnalyzerService
         return 'ats_analysis:' . hash('sha256', $canonical);
     }
 
-    /**
-     * Look up known structural facts for a template. Unknown/missing
-     * templates get an explicit "unknown" marker rather than being silently
-     * treated as single-column/no-tables — the model is instructed not to
-     * guess, so we don't want to hand it a false "clean" default either.
-     */
     private function templateFormattingFacts(?string $template): array
     {
         if ($template === null || !isset(self::TEMPLATE_FORMATTING_PROFILES[$template])) {
@@ -358,11 +281,6 @@ class ATSAnalyzerService
         ];
     }
 
-    /**
-     * Reject empty or content-free CVs before spending a paid API call.
-     *
-     * @param array<string, mixed> $resume
-     */
     private function assertHasContent(array $resume, string $requestId): void
     {
         $hasContent =
@@ -385,9 +303,6 @@ class ATSAnalyzerService
         }
     }
 
-    /**
-     * System instructions for the ATS model.
-     */
     private function systemPrompt(): string
     {
         return <<<'PROMPT'
@@ -547,11 +462,6 @@ Grade mapping:
 PROMPT;
     }
 
-    /**
-     * Structured output JSON schema.
-     *
-     * @return array<string, mixed>
-     */
     private function schema(): array
     {
         return [
@@ -675,11 +585,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * Schema for an individual scoring category.
-     *
-     * @return array<string, mixed>
-     */
     private function categorySchema(): array
     {
         return [
@@ -710,12 +615,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * Normalize incoming CV data into a predictable structure.
-     *
-     * @param array<string, mixed> $cv
-     * @return array<string, mixed>
-     */
     private function normalizeCv(array $cv): array
     {
         $candidate = $cv['candidateName'][0] ?? [];
@@ -789,13 +688,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * Recursively cap any string value in a list to MAX_FIELD_LENGTH so a
-     * single malformed field can't blow up token cost or context size.
-     *
-     * @param array<int|string, mixed> $items
-     * @return array<int|string, mixed>
-     */
     private function capList(array $items): array
     {
         array_walk_recursive($items, function (&$value): void {
@@ -807,12 +699,6 @@ PROMPT;
         return $items;
     }
 
-    /**
-     * Normalize and validate AI result.
-     *
-     * @param array<string, mixed> $result
-     * @return array<string, mixed>
-     */
     private function normalizeResult(array $result, string $requestId): array
     {
         $categories = $result['categories'] ?? [];
@@ -856,16 +742,9 @@ PROMPT;
             $totalScore += $categoryScore;
         }
 
-        /*
-         * Use the category total as the authoritative score. This prevents
-         * the model from returning score=92 while categories total 74.
-         */
         $score = max(0, min(100, $totalScore));
 
         if ($rawModelScore >= 0 && abs($rawModelScore - $score) > 5) {
-            // Model's own arithmetic drifted from its category breakdown by
-            // more than a rounding margin — not fatal, but worth knowing
-            // about if it happens often (signals prompt drift).
             Log::warning('ATS analysis: model score/category total mismatch', [
                 'request_id' => $requestId,
                 'model_score' => $rawModelScore,
@@ -906,11 +785,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * Safely extract structured JSON text from a Responses API result.
-     *
-     * @param array<string, mixed> $response
-     */
     private function extractOutputText(array $response): string
     {
         if (isset($response['output_text']) && is_string($response['output_text'])) {
@@ -936,9 +810,6 @@ PROMPT;
         return '';
     }
 
-    /**
-     * Convert arbitrary CV values into text.
-     */
     private function text(mixed $value): string
     {
         if ($value === null) {
@@ -974,9 +845,6 @@ PROMPT;
         return '';
     }
 
-    /**
-     * Create a safe empty category.
-     */
     private function emptyCategory(string $key, int $maxScore): array
     {
         return [
@@ -991,9 +859,7 @@ PROMPT;
         ];
     }
 
-    /**
-     * Human-readable category label.
-     */
+
     private function categoryLabel(string $key): string
     {
         return match ($key) {
@@ -1010,9 +876,6 @@ PROMPT;
         };
     }
 
-    /**
-     * Convert score into grade.
-     */
     private function grade(int $score): string
     {
         return match (true) {
@@ -1025,10 +888,6 @@ PROMPT;
         };
     }
 
-    /**
-     * Keep provider error bodies out of logs beyond a sane size —
-     * some error responses embed large HTML/debug payloads.
-     */
     private function truncateForLog(string $body, int $limit = 2000): string
     {
         return mb_strlen($body) > $limit

@@ -20,26 +20,13 @@ class JobMatchAnalyzerService
 {
     private const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
 
-    /** Cap on any CV free-text field. */
+   
     private const MAX_CV_FIELD_LENGTH = 4000;
 
-    /** Job descriptions run longer than CV fields — separate, larger cap. */
     private const MAX_JOB_DESCRIPTION_LENGTH = 8000;
 
-    /**
-     * How long an identical (CV, job description) pair's result is cached.
-     * This is what makes the score stable: unchanged content always
-     * returns this exact cached result instead of hitting the model
-     * again and risking a different answer for the same input.
-     */
     private const CACHE_TTL_SECONDS = 86400; // 24 hours
 
-    /**
-     * @param array<string, mixed> $cv
-     * @return array<string, mixed>
-     *
-     * @throws ATSAnalysisException
-     */
     public function analyze(array $cv, string $jobDescription, ?string $requestId = null): array
     {
         $requestId ??= (string) Str::uuid();
@@ -64,9 +51,6 @@ class JobMatchAnalyzerService
         $apiKey = config('services.openai.api_key');
 
         if (empty($apiKey)) {
-            Log::error('Job match analysis: OpenAI API key not configured', [
-                'request_id' => $requestId,
-            ]);
 
             throw new ATSAnalysisException(
                 'OpenAI API key is not configured.',
@@ -90,10 +74,6 @@ class JobMatchAnalyzerService
                     | JSON_THROW_ON_ERROR
             );
         } catch (JsonException $e) {
-            Log::error('Job match analysis: failed to encode outbound payload', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-            ]);
 
             throw new ATSAnalysisException(
                 'Failed to encode payload: ' . $e->getMessage(),
@@ -143,10 +123,6 @@ class JobMatchAnalyzerService
                         'model' => $model,
                         'store' => false,
 
-                        // Low temperature — cuts down on run-to-run drift
-                        // for the same input. Caching (above) is what
-                        // *guarantees* stability; this just makes a fresh
-                        // (cache-miss) analysis less noisy on its own.
                         'temperature' => 0.2,
 
                         'input' => [
