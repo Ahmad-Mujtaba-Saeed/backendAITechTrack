@@ -101,6 +101,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Support Address
+    |--------------------------------------------------------------------------
+    |
+    | Where enquiries submitted through the public contact form are delivered.
+    |
+    */
+
+    'support_address' => env('MAIL_SUPPORT_ADDRESS', 'support@techtrack.online'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Global "From" Address
     |--------------------------------------------------------------------------
     |
