@@ -108,28 +108,27 @@ public function store(Request $request)
 
     // Email to Admin
     Mail::send([], [], function ($mail) use ($request) {
-        $mail->to('support@techtrack.online') // Replace with your admin email
-             ->subject('New Contact Form Submission')
-             ->html("
+        $mail->to('support@techtrack.online')
+            ->subject('New Contact Form Submission')
+            ->html("
                 <h2>New Contact Form Submission</h2>
                 <p><strong>Name:</strong> {$request->name}</p>
                 <p><strong>Email:</strong> {$request->email}</p>
                 <p><strong>Message:</strong><br>{$request->message}</p>
-             ");
+            ");
     });
 
     // Confirmation Email to User
     Mail::send([], [], function ($mail) use ($request) {
         $mail->to($request->email)
-             ->subject('Thank You for Contacting Cv Builder')
-             ->html("
+            ->subject('Thank You for Contacting Path Forge')
+            ->html("
                 <h2>Thank You, {$request->name}!</h2>
                 <p>We have received your message.</p>
-                <p><strong>Subject:</strong> {$request->message}</p>
                 <p>Our team will get back to you as soon as possible.</p>
                 <br>
-                <p>Regards,<br>Cv Builder Team</p>
-             ");
+                <p>Regards,<br>Path Forge Team</p>
+            ");
     });
 
     return response()->json([
