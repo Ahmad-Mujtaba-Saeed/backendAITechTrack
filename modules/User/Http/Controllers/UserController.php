@@ -7,10 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Modules\User\Models\User;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 class UserController extends Controller
 {
     public function getUser(Request $request)
@@ -90,6 +88,7 @@ class UserController extends Controller
         ]);
     }
 
+<<<<<<< HEAD
 public function store(Request $request)
 {
     $request->validate([
@@ -137,6 +136,8 @@ public function store(Request $request)
     ], 201);
 }
 
+=======
+>>>>>>> dab143845eba5dccad33c86346913586261cf97a
 public function changePassword(Request $request)
 {
     $request->validate([

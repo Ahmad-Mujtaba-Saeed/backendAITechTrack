@@ -26,5 +26,16 @@ class AdminUserSeeder extends Seeder
 
         // Assign admin role
         $admin->roles()->syncWithoutDetaching([$adminRole->id]);
+
+
+        // Create or update second user
+        $user = User::updateOrCreate(
+            ['email' => 'user123@gmail.com'],
+            [
+                'name' => 'User 123',
+                'password' => Hash::make('AIProj@techtrack'),
+                'email_verified_at' => now(),
+            ]
+        );
     }
 }

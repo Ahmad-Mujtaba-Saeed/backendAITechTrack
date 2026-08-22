@@ -57,4 +57,10 @@ COPY . .
 # ===============================
 RUN chown -R www-data:www-data storage bootstrap/cache
 
+# ===============================
+# Entrypoint
+# ===============================
+RUN chmod +x docker/php/entrypoint.sh
+
+ENTRYPOINT ["/bin/bash", "docker/php/entrypoint.sh"]
 CMD ["php-fpm"]

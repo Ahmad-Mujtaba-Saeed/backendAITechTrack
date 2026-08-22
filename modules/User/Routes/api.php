@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\User\Http\Controllers\UserController;
 use Modules\User\Http\Controllers\UserManagementController;
+use Modules\User\Http\Controllers\ContactController;
 
 
 Route::middleware(['auth:sanctum'])->prefix('/user')
@@ -27,7 +28,7 @@ Route::middleware(['auth:sanctum','permission:manage-users'])->prefix('/users/ma
     Route::delete('/delete/{user_id}', [UserManagementController::class, 'delete']);
 });
 
-Route::post('/contact', [UserController::class, 'store']);
+Route::post('/contact', [ContactController::class, 'store']);
 
 Route::get('/support', [UserController::class, 'support'])->name('support');
 Route::get('/docs', [UserController::class, 'docs'])->name('docs');

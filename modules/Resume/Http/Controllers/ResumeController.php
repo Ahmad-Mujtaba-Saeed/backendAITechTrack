@@ -105,6 +105,17 @@ class ResumeController extends Controller
         $job_description = $request->job_description;
 
         $resume = Resume::findOrFail($id);
+
+        // Ownership check. Without it any signed-in user could overwrite another
+        // user's CV by id — a write, so worse than the read exposure on the
+        // download routes. `show` and `delete` already guard this way.
+        if ((int) $resume->user_id !== (int) Auth::id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update this resume.',
+            ], 403);
+        }
+
         if($request->cv_resumejson){
             $resume->cv_resumejson = $cv_resumejson;
         }
@@ -958,7 +969,10 @@ class ResumeController extends Controller
             // 1. Get resume data (similar to your PDF download method)
             $resume = Resume::findOrFail($id);
 
-            if(!$resume){
+            // Ownership check. findOrFail alone only proves the row exists, not
+            // that it belongs to the caller, so without this any signed-in user
+            // could download any other user's CV by guessing an id.
+            if ((int) $resume->user_id !== (int) Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Resume not found'
@@ -1006,14 +1020,26 @@ class ResumeController extends Controller
             // Add HTML content - use simple HTML without DOCTYPE, html, head, body tags
             \PhpOffice\PhpWord\Shared\Html::addHtml($section, $html, false, false);
 
-            $title = $resume->title;
 
             // 5. Create a temporary file
-            $fileName = 'resume_' . $resumeData['candidateName'][0]['firstName'] . '_' . $resumeData['candidateName'][0]['familyName'] . '.docx';
-            $tempPath = $title . '.docx';
+            //
+            // The download name is derived from the CV, but the path written to
+            // is not: `$title` comes straight from user input, so using it as a
+            // path let a title like "../../.env" decide where the server wrote.
+            // Strip it to a safe basename for display, and write to a unique
+            // file under the storage temp dir — which also stops two concurrent
+            // downloads of same-titled CVs from overwriting each other.
+            $first = $resumeData['candidateName'][0]['firstName'] ?? '';
+            $last  = $resumeData['candidateName'][0]['familyName'] ?? '';
+
+            $safeName = trim(preg_replace('/[^\p{L}\p{N}\-_ ]+/u', '', $first . ' ' . $last));
+            $safeName = $safeName !== '' ? preg_replace('/\s+/', '_', $safeName) : 'resume';
+            $fileName = $safeName . '.docx';
+
+            $tempPath = tempnam(sys_get_temp_dir(), 'cvdoc_');
 
             // 6. Save the document
-            $phpWord->save($tempPath, 'Word2007', true);
+            $phpWord->save($tempPath, 'Word2007', false);
 
             // 7. Send the file
             return response()->download($tempPath, $fileName, [
@@ -1334,7 +1360,9 @@ class ResumeController extends Controller
             // 1. Get resume record from DB
             $resume = Resume::findOrFail($id);
 
-            if(!$resume){
+            // Ownership check — see downloadDoc. Being signed in is not enough;
+            // the resume has to belong to the caller.
+            if ((int) $resume->user_id !== (int) Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Resume not found'
