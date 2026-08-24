@@ -230,6 +230,582 @@ class ResumeController extends Controller
         return $text;
     }
 
+    /**
+     * Voice brief for a language style chosen in the CV upload modal.
+     *
+     * Naming the style alone is not enough for the model to change register, so each
+     * one ships a verb palette plus what it should foreground. Keys match the options
+     * in the frontend upload form.
+     */
+    private function languageStyleGuide(string $style): string
+    {
+        $guides = [
+            'Professional' => <<<'TXT'
+                - Register: measured, formal and understated. No slang, no exclamation, no hype.
+                - Verb palette: Led, Delivered, Managed, Oversaw, Established, Coordinated, Maintained.
+                - Foreground: scope of responsibility, reliability, standards upheld, stakeholders served.
+                - Rhythm: even, full sentences of similar length; sober connective phrasing.
+                TXT,
+            'Creative' => <<<'TXT'
+                - Register: vivid and energetic, concrete over abstract, confident but never gimmicky.
+                - Verb palette: Shaped, Crafted, Reimagined, Devised, Launched, Brought to life, Explored.
+                - Foreground: originality, design and storytelling instincts, ideas taken from concept to
+                  shipped work, the human effect of what was made.
+                - Rhythm: deliberately varied sentence lengths; a short punchy clause among longer ones.
+                TXT,
+            'Analytical' => <<<'TXT'
+                - Register: precise and evidence-led; every claim traceable to something in the CV.
+                - Verb palette: Analysed, Modelled, Quantified, Evaluated, Diagnosed, Benchmarked, Investigated.
+                - Foreground: method before outcome - what was measured, how, and what it showed. Where a
+                  stated metric exists, name the method that produced it.
+                - Rhythm: cause-and-effect phrasing ("... which reduced ...", "... enabling ...").
+                TXT,
+            'Results Driven' => <<<'TXT'
+                - Register: brisk and outcome-first. Trim qualifiers and hedging.
+                - Verb palette: Increased, Reduced, Accelerated, Delivered, Achieved, Converted, Recovered.
+                - Foreground: open each bullet with what changed, then how it was done. Reuse every stated
+                  metric verbatim and place it early in the sentence.
+                - Rhythm: short, declarative, no subordinate clauses before the outcome.
+                TXT,
+            'Strategic' => <<<'TXT'
+                - Register: senior and forward-looking; frames work against business objectives.
+                - Verb palette: Defined, Aligned, Prioritised, Steered, Scaled, Championed, Positioned.
+                - Foreground: direction set, trade-offs made, roadmaps and priorities, why the work mattered
+                  to the organisation rather than only what was built.
+                - Rhythm: longer horizon framing; connect an action to the outcome it positioned.
+                TXT,
+            'Technical' => <<<'TXT'
+                - Register: exact engineering prose. Prefer the specific term to the general one.
+                - Verb palette: Engineered, Implemented, Architected, Refactored, Automated, Instrumented, Optimised.
+                - Foreground: systems, architecture, protocols, data flows and tooling - but only those the
+                  CV already names. Be concrete about the mechanism, not the sentiment.
+                - Rhythm: dense and economical; no motivational padding.
+                TXT,
+            'Collaborative' => <<<'TXT'
+                - Register: warm and team-centred without losing precision.
+                - Verb palette: Partnered, Facilitated, Mentored, Co-ordinated, Supported, Aligned, Enabled.
+                - Foreground: who the work was done with and for - cross-functional partners, stakeholders,
+                  mentees, handovers - naming only teams and roles the CV already mentions.
+                - Rhythm: pair each action with the people or team it involved.
+                TXT,
+            'Entrepreneurial' => <<<'TXT'
+                - Register: ownership-first and resourceful; conveys initiative taken unprompted.
+                - Verb palette: Founded, Launched, Bootstrapped, Pioneered, Grew, Identified, Seized.
+                - Foreground: gaps spotted, things started from zero, constraints worked around, breadth of
+                  responsibility carried without a large team behind it.
+                - Rhythm: momentum - from problem noticed, to action taken, to what it produced.
+                TXT,
+        ];
+
+        return $guides[$style] ?? <<<TXT
+                - Register: write in a consistently {$style} voice throughout.
+                - Choose verbs and emphasis that a reader would recognise as {$style}, and keep that
+                  register identical across the summary, descriptions and bullets.
+                TXT;
+    }
+
+    /**
+     * The CV schema both passes work against. Pass 1 fills it; pass 2 only ever
+     * patches the prose fields inside it.
+     */
+    private function resumeSchemaJson(): string
+    {
+        return <<<'SCHEMA'
+            {
+            "data": {
+            "candidateName": [
+            {
+            "firstName": "",
+            "familyName": ""
+            }
+            ],
+            "headline": "",
+            "website": null,
+            "preferredWorkLocation": null,
+            "willingToRelocate": null,
+            "objective": null,
+            "association": null,
+            "hobby": null,
+            "patent": null,
+            "publication": null,
+            "referee": null,
+            "dateOfBirth": null,
+            "headshot": null,
+            "nationality": null,
+            "email": [""],
+            "phoneNumber": [
+            {
+            "rawText": "",
+            "countryCode": "",
+            "nationalNumber": "",
+            "formattedNumber": "",
+            "internationalCountryCode": ""
+            }
+            ],
+            "location": {
+            "city": "",
+            "state": "",
+            "poBox": null,
+            "street": null,
+            "country": "",
+            "latitude": null,
+            "formatted": "",
+            "longitude": null,
+            "rawInput": "",
+            "stateCode": "",
+            "postalCode": null,
+            "countryCode": "",
+            "streetNumber": null,
+            "apartmentNumber": null
+            },
+            "availability": null,
+            "summary": {
+                "paragraph": "",
+                "years_experience": null,
+                "confidence": "stated"
+            },
+            "expectedSalary": null,
+            "education": [
+            {
+            "educationAccreditation": "",
+            "educationOrganization": "",
+            "educationDates": {
+              "end": {
+                "day": null,
+                "date": "",
+                "year": null,
+                "month": null,
+                "isCurrent": false
+              },
+              "start": {
+                "day": null,
+                "date": "",
+                "year": null,
+                "month": null,
+                "isCurrent": false
+              },
+              "durationInMonths": null
+            },
+            "educationMajor": [],
+            "educationLevel": {
+              "id": null,
+              "label": "",
+              "value": ""
+            }
+            }
+            ],
+            "workExperience": [
+            {
+            "workExperienceJobTitle": "",
+            "workExperienceOrganization": "",
+            "workExperienceDates": {
+              "end": {
+                "day": null,
+                "date": "",
+                "year": null,
+                "month": null,
+                "isCurrent": true
+              },
+              "start": {
+                "day": null,
+                "date": "",
+                "year": null,
+                "month": null,
+                "isCurrent": false
+              },
+              "durationInMonths": null
+            },
+            "workExperienceDescription": "",
+            "highlights": {
+            "minItems": 3,
+            "maxItems": 7,
+            "items":  [{
+                "bullet": "",
+                "impact": "",
+                "keywords": "",
+                "confidence": ""
+              },
+              ],
+            },
+            "workExperienceType": {
+              "id": null,
+              "label": "",
+              "value": ""
+            }
+            }
+            ],
+            "totalYearsExperience": null,
+            "project": null,
+            "achievement": [],
+            "rightToWork": null,
+            "languages": [
+            {
+            "name": "",
+            "level": null
+            }
+            ],
+            "skill": [
+            {
+            "name": "",
+            "type": "Specialized Skill"
+            }
+            ]
+            }
+            }
+            SCHEMA;
+    }
+
+    /**
+     * Pass 1 - transcription. Facts only, temperature 0, no writing.
+     *
+     * Bullets come across exactly as the CV states them so that pass 2 has real
+     * evidence to work from rather than re-reading the raw OCR text.
+     */
+    private function extractResumeFacts(string $apiKey, string $model, string $rawText): array
+    {
+        $schema = $this->resumeSchemaJson();
+
+        $systemPrompt = <<<PROMPT
+            ROLE
+            - You transcribe raw CV text into ONE valid JSON object matching the SCHEMA below.
+            - You are a transcriber, not a writer. This pass captures facts; prose is written later.
+
+            CORE RULES
+            1) Output JSON only - no extra text.
+            2) Preserve every stated fact exactly: names, dates, employers, job titles, metrics,
+               qualifications and contact details.
+            3) Never invent, expand, summarise or improve anything. If the CV does not state it,
+               the field is null (or an empty array).
+            4) Do NOT rewrite the candidate's wording anywhere in this pass.
+            5) UK date formats (e.g., Mar 2023 - Jul 2025).
+
+            FIELDS THIS PASS ONLY COPIES
+            - "summary".paragraph: the CV's existing profile/summary verbatim, or "" if it has none.
+              "years_experience": only if explicitly stated, else null. "confidence": "stated".
+            - "workExperienceDescription": any prose paragraph already attached to that role,
+              verbatim, or "" if the role has none.
+            - "highlights".items: one entry per bullet or duty ALREADY present for that role, the
+              original wording in "bullet" and "confidence":"stated". Do not split, merge, reword or
+              add bullets. A role that lists no duties gets an empty items array.
+
+            ### REQUIRED JSON FORMAT:
+            {$schema}
+
+            Rules:
+            - Respond ONLY with JSON - no extra commentary.
+            - Leave fields as `null` if the value is unknown or not found.
+            PROMPT;
+
+        $decoded = $this->callOpenAiJson(
+            $apiKey,
+            $model,
+            $systemPrompt,
+            "Raw Text : {$rawText}",
+            0.0,     // transcription must not drift
+            4000,
+            'CV extraction pass'
+        );
+
+        $facts = $decoded['data'] ?? null;
+
+        if (!is_array($facts)) {
+            throw new \RuntimeException('CV extraction pass: response contained no "data" object');
+        }
+
+        return $facts;
+    }
+
+    /**
+     * Pass 2 - voice. Rewrites the prose in the chosen style and returns a patch.
+     *
+     * It is given the extracted facts rather than the raw CV, and returns only the
+     * fields it is allowed to write, keyed by role index. Nothing it can say is able
+     * to reach a name, date, employer or phone number.
+     */
+    private function writeResumeProse(
+        string $apiKey,
+        string $model,
+        array $facts,
+        string $style,
+        string $jobDescription
+    ): array {
+        $evidence = $this->proseEvidence($facts);
+
+        if ($evidence['workExperience'] === [] && $evidence['existingSummary'] === '' && $evidence['headline'] === '') {
+            // Nothing worth a second call.
+            return [];
+        }
+
+        $styleGuide = $this->languageStyleGuide($style);
+
+        // Collected by the upload modal but, before this, never reached the model at all.
+        $jobDescriptionBlock = $jobDescription === '' ? '' : <<<JD
+
+            TARGET ROLE
+            - The candidate is applying for the role described between the markers below.
+            - Mirror its vocabulary wherever the facts genuinely support it, and lead each
+              section with the experience most relevant to it.
+            - Never claim a skill, tool or responsibility the facts do not evidence.
+            --- JOB DESCRIPTION START ---
+            {$jobDescription}
+            --- JOB DESCRIPTION END ---
+            JD;
+
+        $systemPrompt = <<<PROMPT
+            ROLE
+            - You are a CV copywriter. The candidate's facts have already been extracted and are FINAL.
+            - You rewrite prose in one specific voice and return a small JSON patch. Nothing else.
+
+            LANGUAGE STYLE - {$style}
+            {$styleGuide}
+            - This voice governs the summary paragraph, every role description and every bullet.
+            - Two CVs built from the same facts in different styles MUST read noticeably differently.
+              If your output would read the same in any other style, it is wrong.
+            - The voice changes wording, emphasis and rhythm only. Never invent employers, teams,
+              tools, numbers, dates or outcomes in order to serve it.
+            {$jobDescriptionBlock}
+
+            SUMMARY
+            - ONE cohesive paragraph of 80-130 words.
+            - Open clauses with strong verbs from the verb palette above.
+            - Cover, where the facts support it: technical/domain scope, scale, collaboration, quality.
+            - Reuse stated metrics verbatim (e.g. "improved performance by 30%"). No fabricated metrics.
+
+            PER ROLE
+            - "workExperienceDescription": 100-150 words of flowing prose about that role.
+            - "highlights": 3-7 bullets. Fewer than 3 is INVALID.
+            - Each bullet is ONE concise ATS-friendly sentence opening with a strong verb.
+            - Where a role states few duties, DECOMPOSE what is there into distinct facets:
+              (a) what was built/delivered, (b) integrations/security, (c) performance/scale,
+              (d) collaboration/delivery, (e) quality/testing, (f) architecture/tooling.
+              One facet per bullet - never combine facets into a single bullet.
+            - "confidence": "stated" when the bullet rests on wording present in the facts,
+              "inferred" for anything you generalised. When in doubt use "inferred".
+            - "impact": the outcome where one is stated, otherwise "".
+            - "keywords": comma-separated ATS keywords for that bullet.
+
+            OUTPUT - return exactly this shape and nothing else:
+            {
+              "summary": { "paragraph": "", "years_experience": null, "confidence": "stated" },
+              "workExperience": [
+                {
+                  "index": 0,
+                  "workExperienceDescription": "",
+                  "highlights": [
+                    { "bullet": "", "impact": "", "keywords": "", "confidence": "" }
+                  ]
+                }
+              ]
+            }
+            - Include one workExperience entry for EVERY index present in the facts, reusing the
+              SAME index values. Do not reorder, add or drop roles.
+            - Return no other keys. Do not echo names, dates, contact details, education or skills.
+            PROMPT;
+
+        return $this->callOpenAiJson(
+            $apiKey,
+            $model,
+            $systemPrompt,
+            json_encode($evidence, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            0.5,     // room to actually sound different between styles
+            3000,
+            'CV style pass'
+        );
+    }
+
+    /**
+     * The slice of the extracted CV that pass 2 needs to write from.
+     *
+     * Deliberately narrow: sending the whole schema back would cost input tokens and
+     * tempt the model into echoing fields it has no business rewriting.
+     */
+    private function proseEvidence(array $facts): array
+    {
+        $roles = [];
+
+        foreach (array_values($facts['workExperience'] ?? []) as $index => $role) {
+            $bullets = [];
+
+            foreach (($role['highlights']['items'] ?? []) as $item) {
+                $bullet = trim((string) ($item['bullet'] ?? ''));
+
+                if ($bullet !== '') {
+                    $bullets[] = $bullet;
+                }
+            }
+
+            $roles[] = [
+                'index' => $index,
+                'jobTitle' => (string) ($role['workExperienceJobTitle'] ?? ''),
+                'organisation' => (string) ($role['workExperienceOrganization'] ?? ''),
+                'dates' => $role['workExperienceDates'] ?? null,
+                'statedDescription' => (string) ($role['workExperienceDescription'] ?? ''),
+                'statedBullets' => $bullets,
+            ];
+        }
+
+        $skills = [];
+
+        foreach (($facts['skill'] ?? []) as $skill) {
+            $name = trim((string) ($skill['name'] ?? ''));
+
+            if ($name !== '') {
+                $skills[] = $name;
+            }
+        }
+
+        return [
+            'headline' => (string) ($facts['headline'] ?? ''),
+            'totalYearsExperience' => $facts['totalYearsExperience'] ?? null,
+            'existingSummary' => (string) ($facts['summary']['paragraph'] ?? ''),
+            'skills' => $skills,
+            'workExperience' => $roles,
+        ];
+    }
+
+    /**
+     * Fold pass 2's prose back into pass 1's facts.
+     *
+     * Every write is guarded: an index that does not exist is dropped, and an empty
+     * value never overwrites a populated one, so a partial style pass degrades to
+     * less styling rather than to a hollowed-out CV.
+     */
+    private function mergeResumeProse(array $facts, array $prose): array
+    {
+        $paragraph = trim((string) ($prose['summary']['paragraph'] ?? ''));
+
+        if ($paragraph !== '') {
+            $facts['summary'] = [
+                'paragraph' => $paragraph,
+                'years_experience' => $prose['summary']['years_experience']
+                    ?? ($facts['summary']['years_experience'] ?? null),
+                'confidence' => ($prose['summary']['confidence'] ?? '') === 'stated' ? 'stated' : 'inferred',
+            ];
+        }
+
+        $facts['workExperience'] = array_values($facts['workExperience'] ?? []);
+
+        foreach (($prose['workExperience'] ?? []) as $entry) {
+            $index = $entry['index'] ?? null;
+
+            if (!is_numeric($index) || !isset($facts['workExperience'][(int) $index])) {
+                continue;   // pass 2 does not get to invent roles
+            }
+
+            $index = (int) $index;
+            $description = trim((string) ($entry['workExperienceDescription'] ?? ''));
+
+            if ($description !== '') {
+                $facts['workExperience'][$index]['workExperienceDescription'] = $description;
+            }
+
+            $bullets = [];
+
+            foreach (($entry['highlights'] ?? []) as $item) {
+                $bullet = trim((string) ($item['bullet'] ?? ''));
+
+                if ($bullet === '') {
+                    continue;
+                }
+
+                $bullets[] = [
+                    'bullet' => $bullet,
+                    'impact' => $this->flattenToString($item['impact'] ?? ''),
+                    'keywords' => $this->flattenToString($item['keywords'] ?? ''),
+                    'confidence' => ($item['confidence'] ?? '') === 'stated' ? 'stated' : 'inferred',
+                ];
+            }
+
+            if ($bullets !== []) {
+                $facts['workExperience'][$index]['highlights'] = [
+                    'minItems' => 3,
+                    'maxItems' => 7,
+                    'items' => $bullets,
+                ];
+            }
+        }
+
+        return $facts;
+    }
+
+    /**
+     * "keywords" and "impact" come back as a string most of the time and as an array
+     * the rest of the time. The frontend renders them directly, so settle it here.
+     */
+    private function flattenToString(mixed $value): string
+    {
+        if (is_array($value)) {
+            return implode(', ', array_map(static fn ($item) => trim((string) $item), $value));
+        }
+
+        return trim((string) $value);
+    }
+
+    /**
+     * One JSON chat completion, with the failure modes named.
+     *
+     * Truncation in particular used to surface as "Invalid JSON from GPT-4o", which
+     * pointed at a formatting bug when the real cause was the token cap.
+     */
+    private function callOpenAiJson(
+        string $apiKey,
+        string $model,
+        string $systemPrompt,
+        string $userContent,
+        float $temperature,
+        int $maxTokens,
+        string $label
+    ): array {
+        $response = Http::timeout(180)->withHeaders([
+            'Authorization' => "Bearer {$apiKey}",
+            'Content-Type' => 'application/json',
+        ])->post('https://api.openai.com/v1/chat/completions', [
+            'model' => $model,
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userContent],
+            ],
+            'temperature' => $temperature,
+            'response_format' => ['type' => 'json_object'],
+            'max_tokens' => $maxTokens,
+        ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException("{$label}: OpenAI request failed with status {$response->status()}");
+        }
+
+        $choice = $response->json()['choices'][0] ?? null;
+        $content = $choice['message']['content'] ?? null;
+        $finishReason = $choice['finish_reason'] ?? null;
+
+        if ($finishReason === 'length') {
+            throw new \RuntimeException("{$label}: response hit the {$maxTokens} token cap and was truncated");
+        }
+
+        if (!is_string($content) || trim($content) === '') {
+            throw new \RuntimeException("{$label}: OpenAI returned no content");
+        }
+
+        $decoded = json_decode($content, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            Log::error("{$label}: could not decode model JSON", [
+                'json_error' => json_last_error_msg(),
+                'raw' => mb_substr($content, 0, 2000),
+            ]);
+
+            throw new \RuntimeException("{$label}: model did not return valid JSON");
+        }
+
+        Log::info("{$label}: complete", [
+            'model' => $model,
+            'finish_reason' => $finishReason,
+            'completion_tokens' => $response->json()['usage']['completion_tokens'] ?? null,
+        ]);
+
+        return $decoded;
+    }
+
     public function parseResumeOCRPyScript(Request $request)
     {     
               $request->validate([
@@ -399,271 +975,44 @@ class ResumeController extends Controller
 
         try {
             $apiKey = config('services.openai.api_key');
-            $style_adjective = $request->languageStyle ?? "Friendly";
-            $job_description = $request->additionalInfo ?? "";          
-        
-            // Construct detailed evaluation prompt based on the framework
-            $Systemprompt = <<<PROMPT
-                ROLE
-                - You read the raw CV text from the user.
-                - You analyze the contents and elaborate / expand where this may be lacking
-                - You output ONE valid JSON object conforming to the SCHEMA below.
-                - You enrich the CV to be recruiter-friendly and evidence-anchored without inventing data.
-                
-                CORE RULES
-                1) Output JSON only — no extra text.
-                2) Preserve all stated facts (names, dates, metrics, employers).
-                3) Never invent new numbers, employers, degrees, or certifications.
-                4) If >40% of a summary or bullet is generalized wording, set "confidence":"inferred"; otherwise "stated".
-                5) Use {$style_adjective} language style.---
-                6) UK spelling and date formats (e.g., Mar 2023 – Jul 2025).
-                7) Consistent tense and formatting.
-                
-                SUMMARY
-                - Produce ONE cohesive paragraph (80–130 words).
-                - Use strong verbs (Led, Built, Designed, Delivered, Optimized).
-                - Cover, where relevant: technical/domain scope, scalability/performance, collaboration/leadership, quality/security/UX.
-                - Reuse stated metrics verbatim (e.g. “improved performance by 30%”).
-                - No fabricated metrics.
+            $style_adjective = trim((string) $request->input('languageStyle')) ?: 'Professional';
+            $job_description = trim((string) $request->input('additionalInfo'));
 
-                WorkExperience
-                - workExperienceDescription Should be atleast (100–150 words).
-                
+            // Two passes, not one. Extraction and rewriting pull in opposite directions:
+            // transcribing names, dates and phone numbers wants a temperature of 0, while
+            // making the prose sound Creative rather than Technical needs room to move.
+            // Sharing a single call meant one temperature served both, and the style brief
+            // lost out to the surrounding schema - which is why every style read the same.
+            //
+            // Pass 2 returns only the prose fields, never the whole schema, so it is
+            // structurally incapable of corrupting a fact pass 1 got right.
+            $facts = $this->extractResumeFacts($apiKey, $model, $cleanOutput);
 
-                BULLET DECOMPOSITION (REINFORCED)
-                - Every experience entry MUST have *3–7 bullets*. Fewer than 3 is INVALID.
-                - If duties appear as a single sentence, *DECOMPOSE* into discrete bullets that each cover one facet:
-                  (a) what was built/delivered,
-                  (b) integrations/security,
-                  (c) performance/scalability (reuse stated metrics),
-                  (d) collaboration/leadership/delivery,
-                  (e) quality/testing/reliability,
-                  (f) architecture/tooling.
-                - Each bullet is *one concise ATS-friendly sentence* and starts with a strong verb.
-                - Avoid combining multiple facets into one bullet.
-                - For generic expansions, set "confidence":"inferred".
-                
-                BULLET DECOMPOSITION EXAMPLES
-                SOURCE:
-                "Developed REST APIs, integrated third-party services, and managed databases with focus on optimisation and scalability."
-                TARGET:
-                - Designed and developed RESTful APIs powering customer-facing web and mobile applications. (inferred)
-                - Integrated third-party services with secure, reliable data exchange and webhook handling. (inferred)
-                - Optimized queries and caching to improve average API response time by ~35% where measured. (stated if present)
-                - Implemented asynchronous jobs and queues to maintain responsiveness under heavy load. (inferred)
-                - Collaborated with product and QA to deliver production-ready features on predictable timelines. (inferred)
-                                
-                **Parse the CV**  
-                Analyze the candidate's CV and extract structured information in the following JSON format. Fill as many fields as possible based on the text.
-                
-                
-                ### REQUIRED JSON FORMAT:
-                {
-                "data": {
-                "candidateName": [
-                {
-                "firstName": "",
-                "familyName": ""
-                }
-                ],
-                "headline": "",
-                "website": null,
-                "preferredWorkLocation": null,
-                "willingToRelocate": null,
-                "objective": null,
-                "association": null,
-                "hobby": null,
-                "patent": null,
-                "publication": null,
-                "referee": null,
-                "dateOfBirth": null,
-                "headshot": null,
-                "nationality": null,
-                "email": [""],
-                "phoneNumber": [
-                {
-                "rawText": "",
-                "countryCode": "",
-                "nationalNumber": "",
-                "formattedNumber": "",
-                "internationalCountryCode": ""
-                }
-                ],
-                "location": {
-                "city": "",
-                "state": "",
-                "poBox": null,
-                "street": null,
-                "country": "",
-                "latitude": null,
-                "formatted": "",
-                "longitude": null,
-                "rawInput": "",
-                "stateCode": "",
-                "postalCode": null,
-                "countryCode": "",
-                "streetNumber": null,
-                "apartmentNumber": null
-                },
-                "availability": null,
-                "summary": {
-                    "paragraph": "",
-                    "years_experience": null,
-                    "confidence": "stated"
-                },
-                "expectedSalary": null,
-                "education": [
-                {
-                "educationAccreditation": "",
-                "educationOrganization": "",
-                "educationDates": {
-                  "end": {
-                    "day": null,
-                    "date": "",
-                    "year": null,
-                    "month": null,
-                    "isCurrent": false
-                  },
-                  "start": {
-                    "day": null,
-                    "date": "",
-                    "year": null,
-                    "month": null,
-                    "isCurrent": false
-                  },
-                  "durationInMonths": null
-                },
-                "educationMajor": [],
-                "educationLevel": {
-                  "id": null,
-                  "label": "",
-                  "value": ""
-                }
-                }
-                ],
-                "workExperience": [
-                {
-                "workExperienceJobTitle": "",
-                "workExperienceOrganization": "",
-                "workExperienceDates": {
-                  "end": {
-                    "day": null,
-                    "date": "",
-                    "year": null,
-                    "month": null,
-                    "isCurrent": true
-                  },
-                  "start": {
-                    "day": null,
-                    "date": "",
-                    "year": null,
-                    "month": null,
-                    "isCurrent": false
-                  },
-                  "durationInMonths": null
-                },
-                "workExperienceDescription": "",
-                "highlights": {
-                "minItems": 3,
-                "maxItems": 7,
-                "items":  [{
-                    "bullet": "",
-                    "impact": "",
-                    "keywords": "",
-                    "confidence": ""
-                  },
-                  ],
-                },
-                "workExperienceType": {
-                  "id": null,
-                  "label": "",
-                  "value": ""
-                }
-                }
-                ],
-                "totalYearsExperience": null,
-                "project": null,
-                "achievement": [],
-                "rightToWork": null,
-                "languages": [
-                {
-                "name": "",
-                "level": null
-                }
-                ],
-                "skill": [
-                {
-                "name": "",
-                "type": "Specialized Skill"
-                }
-                ]
-                }
-                }
-                
-                Rules:
-                - Respond ONLY with JSON — no extra commentary.
-                - Leave fields as `null` if the value is unknown or not found.
-                
-                PROMPT;
-
-
-                $gptResponse = Http::timeout(180)->withHeaders([
-                    'Authorization' => "Bearer {$apiKey}",
-                    'Content-Type' => 'application/json',
-                ])->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => $model, // Dynamic model selection
-                    'messages' => [
-                        [
-                            'role' => 'system',
-                            'content' => $Systemprompt
-                        ],
-                        [
-                            'role' => 'user',
-                            'content' => "Raw Text : {$cleanOutput}"
-                        ]
-                    ],
-                    'temperature' => 0.0, // Minimize randomness
-                    'response_format' => ['type' => 'json_object'], // Ensure JSON output
-                    'max_tokens' => 5000, // Allow for detailed evaluation
+            try {
+                $prose = $this->writeResumeProse($apiKey, $model, $facts, $style_adjective, $job_description);
+                $facts = $this->mergeResumeProse($facts, $prose);
+            } catch (\Throwable $e) {
+                // The voice pass is an enhancement on top of a result we already hold.
+                // Losing it should cost the user their styling, not their upload.
+                Log::warning('CV language-style pass failed; returning unstyled CV', [
+                    'style' => $style_adjective,
+                    'error' => $e->getMessage(),
                 ]);
-
-        
-            $evaluation = $gptResponse->json()['choices'][0]['message']['content'] ?? null;
-            $parsedData = json_decode($evaluation, true);
-
-            if (isset($evaluation)) {
-                $aiText = $evaluation;
-
-                // Extract only the JSON part
-                $jsonStart = strpos($aiText, '{');
-                if ($jsonStart !== false) {
-                    $jsonString = substr($aiText, $jsonStart);
-                    $decoded = json_decode($jsonString, true);
-
-                    if (json_last_error() === JSON_ERROR_NONE && isset($decoded['data'])) {
-                        $decoded['data']['languageStyle'] = $style_adjective;
-
-                        return response()->json($decoded);
-                    }
-
-                    return response()->json([
-                        'error' => 'Invalid JSON from GPT-4o',
-                        'raw' => $aiText,
-                    ], 500);
-                }
-
-                return response()->json([
-                    'error' => 'No JSON found in GPT-4o response',
-                    'raw' => $aiText,
-                ], 500);
             }
+
+            $facts['languageStyle'] = $style_adjective;
+
+            return response()->json(['data' => $facts]);
+
+        } catch (\Throwable $e) {
+            Log::error('CV enrichment failed', [
+                'error' => $e->getMessage(),
+            ]);
 
             return response()->json([
                 'error' => 'Failed to get evaluation from AI model',
+                'details' => $e->getMessage(),
             ], 500);
-            
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to get evaluation from AI model', 'details' => $e->getMessage()], 500);
         }
     }
      
