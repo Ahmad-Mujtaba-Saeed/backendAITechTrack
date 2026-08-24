@@ -13,6 +13,37 @@ use Illuminate\Support\Facades\Log;
 class StripeController extends Controller
 {
 
+    /**
+     * Every Stripe customer id on record for the authenticated user.
+     *
+     * The id lives on the user and on each subscription row, and the two can
+     * differ across re-subscribes, so both sources count as "mine".
+     */
+    private function ownCustomerIds(): array
+    {
+        $user = Auth::user();
+
+        $ids = Subscription::where('user_id', $user->id)
+            ->whereNotNull('cus_id')
+            ->pluck('cus_id')
+            ->all();
+
+        if ($user->stripe_customer_id) {
+            $ids[] = $user->stripe_customer_id;
+        }
+
+        return array_values(array_unique(array_filter($ids)));
+    }
+
+    /**
+     * Endpoints that take a customer id in the URL must check it against this
+     * so one account cannot read or modify another account's cards.
+     */
+    private function ownsCustomer(?string $customerId): bool
+    {
+        return $customerId !== null && in_array($customerId, $this->ownCustomerIds(), true);
+    }
+
 public function getSubscriptionDetails(Request $request)
 {
     $user = Auth::user();
@@ -280,12 +311,16 @@ public function createSubscriptionSession(Request $request, $planId)
 
     public function deletePaymentMethod(Request $request, $id)
     {
-        $user = Auth::user();
-
         Stripe::setApiKey(config('services.stripe.secret'));
 
         try {
             $paymentMethod = \Stripe\PaymentMethod::retrieve($id);
+
+            // Only ever detach a card that belongs to the caller.
+            if (!$this->ownsCustomer($paymentMethod->customer)) {
+                return response()->json(['message' => 'Unauthorized.'], 403);
+            }
+
             $paymentMethod->detach();
 
             return response()->json(['message' => 'Payment method deleted successfully.']);
@@ -299,12 +334,23 @@ public function createSubscriptionSession(Request $request, $planId)
 
     public function createSetupIntent($customerId)
     {
+    if (!$this->ownsCustomer($customerId)) {
+        return response()->json(['message' => 'Unauthorized.'], 403);
+    }
+
     Stripe::setApiKey(config('services.stripe.secret'));
 
-    $intent = \Stripe\SetupIntent::create([
-        'customer' => $customerId,
-        'payment_method_types' => ['card'],
-    ]);
+    try {
+        $intent = \Stripe\SetupIntent::create([
+            'customer' => $customerId,
+            'payment_method_types' => ['card'],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Failed to set up payment method.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 
     return response()->json([
         'clientSecret' => $intent->client_secret,
@@ -313,14 +359,34 @@ public function createSubscriptionSession(Request $request, $planId)
 
    public function makeDefaultPaymentMethod(Request $request, $customerId)
    {
+    $request->validate(['payment_method_id' => 'required|string']);
+
+    if (!$this->ownsCustomer($customerId)) {
+        return response()->json(['message' => 'Unauthorized.'], 403);
+    }
 
     Stripe::setApiKey(config('services.stripe.secret'));
 
-    \Stripe\Customer::update($customerId, [
-        'invoice_settings' => [
-            'default_payment_method' => $request->payment_method_id,
-        ],
-    ]);   
+    try {
+        // The card must already be attached to this customer, otherwise a user
+        // could point their default at someone else's payment method.
+        $paymentMethod = \Stripe\PaymentMethod::retrieve($request->payment_method_id);
+
+        if ($paymentMethod->customer !== $customerId) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        \Stripe\Customer::update($customerId, [
+            'invoice_settings' => [
+                'default_payment_method' => $paymentMethod->id,
+            ],
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Failed to update payment method.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 
     return response()->json(['message' => 'Payment method updated successfully.']);
     }

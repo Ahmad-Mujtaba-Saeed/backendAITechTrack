@@ -11,16 +11,21 @@ require __DIR__ . '/plans.php';
 
 Route::middleware(['auth:sanctum'])->prefix('/billing')
     ->group(function () {
-    Route::get('/stripe/create-subscription-session/{planId}', [StripeController::class, 'createSubscriptionSession']);
-    Route::get('/customer/credit',[StripeController::class , 'getStripeCredit']);
-    Route::get('/subscription/details', [StripeController::class, 'getSubscriptionDetails']);
-    Route::post('/subscription/cancel', [StripeController::class, 'cancelSubscription']);
-    Route::get('/subscription/payment-method', [StripeController::class, 'getPaymentMethod']);
-    Route::delete('/subscription/payment-method/{id}', [StripeController::class, 'deletePaymentMethod']);
-    Route::get('/subscription/payment-method-intent/{customerId}', [StripeController::class, 'createSetupIntent']);
-    Route::post('/subscription/payment-method-default/{customerId}', [StripeController::class, 'makeDefaultPaymentMethod']);
-    Route::post('/subscription/change-plan/{planId}', [StripeController::class, 'changePlan']); 
-    
+    // Customer billing. Internal/staff accounts are never subscribed, so the
+    // 'billable' guard keeps them out of every one of these.
+    Route::middleware(['billable'])->group(function () {
+        Route::get('/stripe/create-subscription-session/{planId}', [StripeController::class, 'createSubscriptionSession']);
+        Route::get('/customer/credit',[StripeController::class , 'getStripeCredit']);
+        Route::get('/subscription/details', [StripeController::class, 'getSubscriptionDetails']);
+        Route::post('/subscription/cancel', [StripeController::class, 'cancelSubscription']);
+        Route::get('/subscription/payment-method', [StripeController::class, 'getPaymentMethod']);
+        Route::delete('/subscription/payment-method/{id}', [StripeController::class, 'deletePaymentMethod']);
+        Route::get('/subscription/payment-method-intent/{customerId}', [StripeController::class, 'createSetupIntent']);
+        Route::post('/subscription/payment-method-default/{customerId}', [StripeController::class, 'makeDefaultPaymentMethod']);
+        Route::post('/subscription/change-plan/{planId}', [StripeController::class, 'changePlan']);
+    });
+
+
     Route::middleware(['permission:manage-plans'])->group(function () {
         Route::get('/subscriptions', [SubscriptionController::class, 'getAllSubscriptions']);
         Route::prefix('/transactions')->group(function () {
