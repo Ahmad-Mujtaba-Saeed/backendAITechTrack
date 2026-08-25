@@ -2,29 +2,9 @@
 
 namespace Modules\Resume\Services;
 
-/**
- * Deterministic ATS keyword-matching engine.
- *
- * This is the piece a pure-AI ATS checker is missing: real ATS software
- * (Workday, Taleo, Greenhouse, iCIMS) and consumer tools like Jobscan do
- * NOT ask a language model "does this resume look good" — they parse text,
- * extract keywords/skills from the job description, and check which of
- * those literal terms appear in the resume. That's the actual algorithm
- * this class reproduces.
- *
- * Zero external API calls. Zero cost. 100% reproducible: same CV + same
- * job description => same result, forever. This is what lets a product
- * work with no OpenAI key configured, and it's what gives the product
- * real standalone value for an Envato/CodeCanyon review — the AI layer
- * (ATSAnalyzerService / JobMatchAnalyzerService) can sit on top of this
- * as an optional "AI suggestions" enrichment, not as the engine itself.
- */
 class KeywordMatchAnalyzerService
 {
-    /**
-     * Common English stopwords, plus resume/JD boilerplate words that
-     * are never meaningful keywords on their own.
-     */
+   
     private const STOPWORDS = [
         'a','an','the','and','or','but','if','then','else','of','to','in','on','for','with',
         'at','by','from','as','is','are','was','were','be','been','being','it','its','this',
@@ -39,16 +19,7 @@ class KeywordMatchAnalyzerService
         'excellent','including','etc','plus','looking','candidate','candidates','apply',
     ];
 
-    /**
-     * Curated hard-skill vocabulary across common professional domains.
-     * "Hard skills" = concrete, verifiable, literally matchable terms
-     * (tools, technologies, certifications, methodologies) — these carry
-     * far more ATS weight than soft skills, same as real ATS keyword logic.
-     *
-     * Kept as a flat lookup set (not a fixed scoring list) — it's used to
-     * BOOST confidence that an extracted n-gram is a real skill, not to
-     * restrict extraction to only these terms (see extractCandidateTerms).
-     */
+   
     private const HARD_SKILL_HINTS = [
         // software / IT
         'php','laravel','javascript','typescript','python','java','c++','c#','ruby','golang',
@@ -71,11 +42,6 @@ class KeywordMatchAnalyzerService
         'bachelor','master','mba','phd','certified','certification','license','licensed',
     ];
 
-    /**
-     * Soft-skill vocabulary — matched and reported separately, weighted
-     * lower than hard skills, matching how real ATS/recruiter tools treat
-     * them (present but rarely decisive).
-     */
     private const SOFT_SKILL_HINTS = [
         'communication','leadership','teamwork','collaboration','problem solving',
         'problem-solving','critical thinking','time management','adaptability',
@@ -95,15 +61,6 @@ class KeywordMatchAnalyzerService
         'authored','presented','collaborated','initiated','transformed','accelerated',
     ];
 
-    /**
-     * Score a resume against a specific job description using literal
-     * keyword extraction and matching — no AI call.
-     *
-     * @param array<string, mixed> $resume Structured resume data (same
-     *        shape the AI-based analyzers accept — summary, experience,
-     *        skills, education, etc.)
-     * @return array<string, mixed>
-     */
     public function match(array $resume, string $jobDescription): array
     {
         $resumeText = $this->flattenResumeText($resume);
@@ -156,14 +113,6 @@ class KeywordMatchAnalyzerService
         ];
     }
 
-    /**
-     * Deterministic content/structure checks — the non-AI equivalent of
-     * "does this resume have the things an ATS parser and a recruiter
-     * both look for". Pure regex/string analysis on the flattened text.
-     *
-     * @param array<string, mixed> $resume
-     * @return array<string, mixed>
-     */
     public function analyzeStructure(array $resume): array
     {
         $text = $this->flattenResumeText($resume);
@@ -179,8 +128,7 @@ class KeywordMatchAnalyzerService
             $actionVerbCount += (int) preg_match_all('/\b' . preg_quote($verb, '/') . '\b/i', $normalized);
         }
 
-        // Quantified achievements: numbers, percentages, currency amounts
-        // attached to accomplishment-shaped text ("increased X by 30%").
+       
         preg_match_all('/\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s?%|\$\s?\d[\d,.]*|\b\d+\+?\s?(?:x|times)\b/i', $text, $quantMatches);
         $quantifiedCount = count($quantMatches[0]);
 
@@ -204,18 +152,6 @@ class KeywordMatchAnalyzerService
         ];
     }
 
-    // ---------------------------------------------------------------
-    // Extraction internals
-    // ---------------------------------------------------------------
-
-    /**
-     * Pull weighted keywords out of free-form job-description text.
-     * Weighting: hard skills > soft skills > generic capitalized/technical
-     * terms, and terms repeated more than once in the JD get a small boost
-     * (mirrors how JDs emphasize what actually matters via repetition).
-     *
-     * @return array<string, int> term => weight
-     */
     private function extractKeywordsWithWeight(string $jobDescription): array
     {
         $normalized = $this->normalize($jobDescription);
@@ -234,10 +170,7 @@ class KeywordMatchAnalyzerService
             }
         }
 
-        // 2) Generic candidate terms (1–3 word noun-ish phrases not already
-        //    covered) — catches domain terms outside the curated lists so
-        //    the tool isn't limited to a fixed dictionary, same principle
-        //    real keyword extractors use (frequency + non-stopword filter).
+      
         foreach ($this->extractCandidateTerms($jobDescription) as $term => $count) {
             if (isset($weights[$term]) || $count < 2) {
                 continue; // require repetition for uncurated terms to reduce noise
@@ -251,14 +184,6 @@ class KeywordMatchAnalyzerService
         return $weights;
     }
 
-    /**
-     * Extract 1–3 word candidate phrases with occurrence counts, ignoring
-     * stopwords. This is a lightweight frequency-based extractor, not a
-     * full NLP pipeline — deliberately simple so it stays dependency-free
-     * and fully deterministic.
-     *
-     * @return array<string, int> phrase => occurrence count
-     */
     private function extractCandidateTerms(string $text): array
     {
         $normalized = $this->normalize($text);
@@ -301,10 +226,7 @@ class KeywordMatchAnalyzerService
         return (bool) preg_match('/\b' . preg_quote($term, '/') . '\b/i', $normalizedHaystack);
     }
 
-    /**
-     * @param array<string, int> $weighted
-     * @return array<int, string>
-     */
+   
     private function topByWeight(array $weighted, int $limit): array
     {
         arsort($weighted);
@@ -330,12 +252,7 @@ class KeywordMatchAnalyzerService
         return trim(preg_replace('/\s+/', ' ', $text) ?? '');
     }
 
-    /**
-     * Flatten structured resume data (arrays of experience/skills/education)
-     * into a single searchable text blob.
-     *
-     * @param array<string, mixed> $resume
-     */
+  
     private function flattenResumeText(array $resume): string
     {
         $parts = [];

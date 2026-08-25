@@ -44,15 +44,8 @@ class ATSController extends Controller
             'template' => $template,
         ]);
 
-        // Deterministic structural check runs first and always succeeds —
-        // no API key, no network call, no cost. This is the real,
-        // reproducible ATS signal the product stands on.
         $structure = $this->keywordMatcher->analyzeStructure($resumeData);
 
-        // The AI layer adds narrative suggestions/summary on top. If it's
-        // not configured or fails, the deterministic result still stands
-        // on its own — the product never breaks because an API key is
-        // missing or OpenAI is down.
         $aiResult = null;
 
         try {
@@ -80,14 +73,6 @@ class ATSController extends Controller
 
     } catch (\Throwable $e) {
 
-        Log::error('ATS ERROR', [
-            'resume_id' => $id,
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-
         $safeMessage = $e instanceof ATSAnalysisException
             ? $e->getSafeMessage()
             : 'CV analysis failed. Please try again shortly.';
@@ -99,10 +84,6 @@ class ATSController extends Controller
     }
 }
 
-    /**
-     * Score a resume against a job description — either the one already
-     * saved on the resume, or a fresh one passed in the request body.
-     */
     public function matchJob(Request $request, string $id)
     {
         try {
@@ -119,9 +100,7 @@ class ATSController extends Controller
                 'job_description' => ['nullable', 'string', 'min:40', 'max:8000'],
             ]);
 
-            // A JD passed in this request takes priority over one already
-            // saved on the resume, so a user can test against a different
-            // posting without overwriting what's stored.
+           
             $jobDescription = $request->input('job_description', $resume->job_description);
 
             if (!$jobDescription || mb_strlen(trim($jobDescription)) < 40) {
@@ -134,14 +113,6 @@ class ATSController extends Controller
 
             $resumeData = $resume->cv_resumejson ?? [];
 
-            Log::info('Job match: resume loaded', [
-                'resume_id' => $id,
-                'data_type' => gettype($resumeData),
-                'job_description_source' => $request->filled('job_description') ? 'request' : 'saved',
-            ]);
-
-            // Deterministic keyword match is the authoritative score —
-            // real, reproducible, works with zero AI configured.
             $keywordMatch = $this->keywordMatcher->match($resumeData, $jobDescription);
 
             $aiResult = null;
@@ -158,13 +129,6 @@ class ATSController extends Controller
             $result = $aiResult ?? [];
             $result['keyword_match'] = $keywordMatch;
             $result['match_percentage'] = $keywordMatch['match_percentage'];
-
-            Log::info('Job match: analysis completed', [
-                'resume_id' => $id,
-                'ai_enrichment_used' => $aiResult !== null,
-                'keyword_match_percentage' => $keywordMatch['match_percentage'],
-            ]);
-
             return response()->json([
                 'success' => true,
                 'message' => 'Job match analysis completed successfully.',
@@ -172,14 +136,6 @@ class ATSController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-
-            Log::error('JOB MATCH ERROR', [
-                'resume_id' => $id,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
 
             $safeMessage = $e instanceof ATSAnalysisException
                 ? $e->getSafeMessage()
@@ -192,13 +148,6 @@ class ATSController extends Controller
         }
     }
 
-    /**
-     * Build a full ATS result shape from deterministic checks alone, for
-     * when the AI enrichment layer is unavailable or unconfigured.
-     *
-     * @param array<string, mixed> $structure
-     * @return array<string, mixed>
-     */
     private function deterministicOnlyResult(array $structure, ?string $template): array
     {
         $score = 0;

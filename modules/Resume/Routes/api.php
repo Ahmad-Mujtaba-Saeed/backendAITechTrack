@@ -18,11 +18,5 @@ Route::middleware(['auth:sanctum'])->prefix('/resume')
     Route::post('/{id}/ats-check', [ATSController::class, 'check']);
     Route::post('/{id}/job-match', [ATSController::class, 'matchJob']);
 
-    // Previously registered outside this group, and so reachable with no
-    // authentication at all: anyone could walk the id range and download any
-    // user's CV, name, email, phone and address included. It was placed outside
-    // because the client opened it with window.open, which cannot send the
-    // bearer token. The client now builds the DOCX itself, so the endpoint can
-    // sit behind auth like every other resume route.
     Route::get('/{id}/download-doc', [ResumeController::class, 'downloadDoc']);
 });

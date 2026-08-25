@@ -215,16 +215,6 @@ if (!$user) {
 
                     $invoice = \Stripe\Invoice::retrieve($subscription->latest_invoice);
 
-                    // $payment = Payment::create([
-                    //     'user_id' => $user->id,
-                    //     'related_type' => 'membership',
-                    //     'related_type_id' => $plan->id,
-                    //     'payment_amount' => $invoice->amount_paid / 100,  // Use actual amount paid from invoice
-                    //     'payment_transaction_id' => $subscription->latest_invoice,
-                    //     'payment_gateway' => 'stripe',
-                    //     'payment_status' => $invoice->status,
-                    //     'payment_currency' => strtoupper($invoice->currency), // Use currency from invoice
-                    // ]);
 
                     // Handle trial end date (can be null if no trial)
                     $trialEndsAt = $subscription->trial_end

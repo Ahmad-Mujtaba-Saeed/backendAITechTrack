@@ -51,12 +51,6 @@ class AnalyzeCvAgainstJobJob implements ShouldQueue
                 self::RESULT_TTL_SECONDS
             );
         } catch (ATSAnalysisException $e) {
-            Log::warning('AnalyzeCvAgainstJobJob: analysis attempt failed', [
-                'analysis_id' => $this->analysisId,
-                'user_id' => $this->userId,
-                'attempt' => $this->attempts(),
-                'safe_message' => $e->getSafeMessage(),
-            ]);
 
             if ($this->attempts() >= $this->tries) {
                 Cache::put(
@@ -76,11 +70,6 @@ class AnalyzeCvAgainstJobJob implements ShouldQueue
             ? $exception->getSafeMessage()
             : 'Job match analysis failed. Please try again shortly.';
 
-        Log::error('AnalyzeCvAgainstJobJob: permanently failed after all retries', [
-            'analysis_id' => $this->analysisId,
-            'user_id' => $this->userId,
-            'error' => $exception->getMessage(),
-        ]);
 
         Cache::put(
             $this->cacheKey(),

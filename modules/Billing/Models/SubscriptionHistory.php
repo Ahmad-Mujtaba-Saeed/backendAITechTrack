@@ -12,18 +12,8 @@ class SubscriptionHistory extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
     
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'subscription_histories';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
     protected $fillable = [
         'subscription_id',
         'user_id',
@@ -45,11 +35,7 @@ class SubscriptionHistory extends Model implements Auditable
         'user_agent',
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
+
     protected $casts = [
         'trial_ends_at' => 'datetime',
         'ends_at' => 'datetime',
@@ -57,9 +43,6 @@ class SubscriptionHistory extends Model implements Auditable
         'cancel_at_period_end' => 'boolean',
     ];
 
-    /**
-     * Get the subscription that owns the history record.
-     */
     public function subscription(): BelongsTo
     {
         return $this->belongsTo(Subscription::class);
@@ -76,25 +59,17 @@ class SubscriptionHistory extends Model implements Auditable
         return $this->hasMany(Payment::class, 'subscription_id', 'sub_id');
     }
 
-    /**
-     * Get the user that owns the subscription.
-     */
+   
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the user who made the change.
-     */
     public function changedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
     }
 
-    /**
-     * Create a new history record from a subscription.
-     */
     public static function createFromSubscription(
         Subscription $subscription,
         string $action,

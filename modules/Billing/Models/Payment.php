@@ -12,19 +12,9 @@ use OwenIt\Auditing\Contracts\Auditable;
 class Payment extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
-    
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
+   
     protected $table = 'payments';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'related_type_id',
@@ -38,27 +28,15 @@ class Payment extends Model implements Auditable
         'payment_transaction_id',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'payment_amount' => 'integer',
     ];
 
-    /**
-     * The model's default values for attributes.
-     *
-     * @var array
-     */
     protected $attributes = [
         'payment_status' => 'pending',
     ];
 
-    /**
-     * Get the user that owns the payment.
-     */
+  
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -108,8 +86,7 @@ class Payment extends Model implements Auditable
             ]);
         }
 
-        // If we get here, we couldn't resolve the relationship
-        // Return a relation that won't throw an error
+       
         if (app()->bound('log')) {
             \Log::warning('Could not resolve related model type', [
                 'related_type' => $this->related_type,
@@ -121,25 +98,17 @@ class Payment extends Model implements Auditable
             ->whereRaw('1=0'); // This will return no results but won't throw an error
     }
 
-    /**
-     * Scope a query to only include pending payments.
-     */
     public function scopePending($query)
     {
         return $query->where('payment_status', 'pending');
     }
 
-    /**
-     * Scope a query to only include completed payments.
-     */
+   
     public function scopeCompleted($query)
     {
         return $query->where('payment_status', 'completed');
     }
 
-    /**
-     * Mark the payment as completed.
-     */
     public function markAsCompleted()
     {
         $this->update(['payment_status' => 'completed']);

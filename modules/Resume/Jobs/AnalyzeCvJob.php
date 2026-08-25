@@ -56,14 +56,7 @@ class AnalyzeCvJob implements ShouldQueue
                 self::RESULT_TTL_SECONDS
             );
         } catch (ATSAnalysisException $e) {
-            // Service already logged full internal detail — just record the
-            // safe message for the client and let the job retry naturally.
-            Log::warning('AnalyzeCvJob: analysis attempt failed', [
-                'analysis_id' => $this->analysisId,
-                'user_id' => $this->userId,
-                'attempt' => $this->attempts(),
-                'safe_message' => $e->getSafeMessage(),
-            ]);
+           
 
             if ($this->attempts() >= $this->tries) {
                 Cache::put(
@@ -85,12 +78,6 @@ class AnalyzeCvJob implements ShouldQueue
         $safeMessage = $exception instanceof ATSAnalysisException
             ? $exception->getSafeMessage()
             : 'CV analysis failed. Please try again shortly.';
-
-        Log::error('AnalyzeCvJob: permanently failed after all retries', [
-            'analysis_id' => $this->analysisId,
-            'user_id' => $this->userId,
-            'error' => $exception->getMessage(),
-        ]);
 
         Cache::put(
             $this->cacheKey(),

@@ -192,10 +192,6 @@ class ATSAnalyzerService
         $result = $response->json();
 
         if (!is_array($result)) {
-            Log::error('ATS analysis: non-array API response', [
-                'request_id' => $requestId,
-                'duration_ms' => $durationMs,
-            ]);
 
             throw new ATSAnalysisException(
                 'AI ATS analysis returned an invalid API response.',
@@ -206,10 +202,6 @@ class ATSAnalyzerService
         $output = $this->extractOutputText($result);
 
         if ($output === '') {
-            Log::error('ATS analysis: empty output_text from OpenAI', [
-                'request_id' => $requestId,
-                'duration_ms' => $durationMs,
-            ]);
 
             throw new ATSAnalysisException(
                 'AI ATS analysis returned an empty response.',
@@ -234,10 +226,6 @@ class ATSAnalyzerService
         }
 
         if (!is_array($analysis)) {
-            Log::error('ATS analysis: decoded output was not a JSON object', [
-                'request_id' => $requestId,
-                'duration_ms' => $durationMs,
-            ]);
 
             throw new ATSAnalysisException(
                 'AI ATS analysis returned an invalid JSON structure.',
@@ -245,11 +233,6 @@ class ATSAnalyzerService
             );
         }
 
-        Log::info('ATS analysis completed', [
-            'request_id' => $requestId,
-            'duration_ms' => $durationMs,
-            'model' => $model,
-        ]);
 
         $normalized = $this->normalizeResult($analysis, $requestId);
 

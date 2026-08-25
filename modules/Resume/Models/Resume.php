@@ -14,11 +14,6 @@ class Resume extends Model implements Auditable
     use SoftDeletes;
     use \OwenIt\Auditing\Auditable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'title',
@@ -33,11 +28,6 @@ class Resume extends Model implements Auditable
         'job_description',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'cv_resumejson' => 'array',
         'is_default' => 'boolean',
@@ -47,42 +37,21 @@ class Resume extends Model implements Auditable
         'deleted_at' => 'datetime',
     ];
 
-    /**
-     * Get the user that owns the resume.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Get the activities for the resume.
-     */
-    // public function activities(): HasMany
-    // {
-    //     return $this->hasMany(CvRecentActivity::class, 'type_id')
-    //         ->where('type', 'resume');
-    // }
-
-    /**
-     * Scope a query to only include default resumes.
-     */
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
     }
 
-    /**
-     * Scope a query to only include public resumes.
-     */
     public function scopePublic($query)
     {
         return $query->where('is_public', true);
     }
 
-    /**
-     * Get the file size in a human-readable format.
-     */
     public function getFormattedFileSizeAttribute(): string
     {
         $size = $this->file_size;

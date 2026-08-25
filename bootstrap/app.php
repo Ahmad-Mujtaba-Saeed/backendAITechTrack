@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'agent' => \App\Http\Middleware\RequireAgentToken::class,
+            'billable' => \App\Http\Middleware\EnsureBillableUser::class,
         ]);
     })
 ->withExceptions(function (Exceptions $exceptions) {

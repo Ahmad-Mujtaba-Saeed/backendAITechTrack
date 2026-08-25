@@ -13,11 +13,7 @@ class Subscription extends Model implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
+    
     protected $table = 'subscriptions';
 
     protected $fillable = [
@@ -38,11 +34,7 @@ class Subscription extends Model implements Auditable
         'cancel_at_period_end' => false
     ];
 
-    /**
-     * The attributes that should be cast to native types.
-     *
-     * @var array
-     */
+    
     protected $casts = [
         'trial_ends_at' => 'datetime',
         'ends_at' => 'datetime',
@@ -53,47 +45,30 @@ class Subscription extends Model implements Auditable
         'cancel_at_period_end' => 'boolean'
     ];
 
-    /**
-     * Get the user that owns the subscription.
-     */
+  
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Determine if the subscription is active, on trial, or within its grace period.
-     */
+   
     public function valid(): bool
     {
         return $this->active() || $this->onTrial() || $this->onGracePeriod();
     }
 
-    /** Determine if the subscription is active. */
-    // public function active(): bool
-    // {
-    //     return $this->stripe_status === 'active' || $this->stripe_status === 'trialing';
-    // }
-
-    /**
-     * Determine if the subscription is no longer active.
-     */
+   
     public function cancelled(): bool
     {
         return !is_null($this->ends_at);
     }
 
-    /**
-     * Determine if the subscription is within its trial period.
-     */
     public function onTrial(): bool
     {
         return $this->trial_ends_at && $this->trial_ends_at->isFuture();
     }
 
-    /**
-     * Determine if the subscription is within its grace period after cancellation.
-     */
+   
     public function onGracePeriod(): bool
     {
         return $this->ends_at && $this->ends_at->isFuture();
@@ -109,17 +84,12 @@ class Subscription extends Model implements Auditable
         return $this->belongsTo(Plan::class, 'type_id', 'id');
     }
 
-    /**
-     * Get all history records for the subscription.
-     */
     public function history()
     {
         return $this->hasMany(SubscriptionHistory::class)->latest();
     }
 
-    /**
-     * The "booted" method of the model.
-     */
+  
     protected static function booted()
     {
         // Create history record when subscription is created

@@ -85,9 +85,7 @@ class CoreCredentialsController extends Controller
         return response()->json($credential);
     }
 
-    /**
-     * Delete a credential
-     */
+    
     public function destroy($key)
     {
         $credential = CoreCredential::where('key', $key)->firstOrFail();

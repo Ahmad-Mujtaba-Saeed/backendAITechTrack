@@ -12,17 +12,14 @@ use Modules\User\Models\Contact;
 
 class ContactController extends Controller
 {
-    /**
-     * Store a contact form submission and notify support.
-     */
+   
     public function store(StoreContactRequest $request)
     {
         $contact = Contact::create($request->validated());
 
         $supportAddress = config('mail.support_address');
 
-        // The enquiry is already saved, so a mail failure must not fail the
-        // request — log it and let support pick it up from the contacts table.
+       
         try {
             Mail::to($supportAddress)->send(new ContactSubmissionAdminMail($contact));
         } catch (\Throwable $e) {

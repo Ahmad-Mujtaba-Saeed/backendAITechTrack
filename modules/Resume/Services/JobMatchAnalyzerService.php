@@ -11,11 +11,6 @@ use Illuminate\Support\Str;
 use JsonException;
 use Modules\Resume\Exceptions\ATSAnalysisException;
 
-/**
- * Scores a CV against a specific job description — unlike
- * ATSAnalyzerService (general ATS readiness, no job context),
- * this answers "how well does this CV match THIS job posting".
- */
 class JobMatchAnalyzerService
 {
     private const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
@@ -40,10 +35,7 @@ class JobMatchAnalyzerService
         $cached = Cache::get($cacheKey);
 
         if (is_array($cached)) {
-            Log::info('Job match analysis: served from cache — content unchanged since last run', [
-                'request_id' => $requestId,
-                'cache_key' => $cacheKey,
-            ]);
+           
 
             return $cached;
         }
@@ -173,12 +165,6 @@ class JobMatchAnalyzerService
         $durationMs = (int) ((microtime(true) - $startedAt) * 1000);
 
         if ($response->failed()) {
-            Log::error('Job match analysis: OpenAI request failed', [
-                'request_id' => $requestId,
-                'status' => $response->status(),
-                'body' => $this->truncateForLog($response->body()),
-                'duration_ms' => $durationMs,
-            ]);
 
             $safeMessage = $response->status() === 429
                 ? 'Job match analysis is receiving high demand right now. Please try again in a moment.'
@@ -194,10 +180,6 @@ class JobMatchAnalyzerService
         $result = $response->json();
 
         if (!is_array($result)) {
-            Log::error('Job match analysis: non-array API response', [
-                'request_id' => $requestId,
-                'duration_ms' => $durationMs,
-            ]);
 
             throw new ATSAnalysisException(
                 'Job match analysis returned an invalid API response.',
@@ -208,11 +190,7 @@ class JobMatchAnalyzerService
         $output = $this->extractOutputText($result);
 
         if ($output === '') {
-            Log::error('Job match analysis: empty output_text from OpenAI', [
-                'request_id' => $requestId,
-                'duration_ms' => $durationMs,
-            ]);
-
+          
             throw new ATSAnalysisException(
                 'Job match analysis returned an empty response.',
                 requestId: $requestId,
@@ -222,11 +200,7 @@ class JobMatchAnalyzerService
         try {
             $analysis = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            Log::error('Job match analysis: model output was not valid JSON', [
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'duration_ms' => $durationMs,
-            ]);
+           
 
             throw new ATSAnalysisException(
                 'Job match analysis returned invalid JSON: ' . $e->getMessage(),
@@ -247,11 +221,6 @@ class JobMatchAnalyzerService
             );
         }
 
-        Log::info('Job match analysis completed', [
-            'request_id' => $requestId,
-            'duration_ms' => $durationMs,
-            'model' => $model,
-        ]);
 
         $normalized = $this->normalizeResult($analysis, $requestId);
 
@@ -260,14 +229,7 @@ class JobMatchAnalyzerService
         return $normalized;
     }
 
-    /**
-     * Content-addressed cache key — a hash of the exact normalized CV plus
-     * the exact job description text. Any edit to either produces a
-     * different key, so a changed CV always triggers a fresh analysis and
-     * an unchanged CV always returns the exact same cached score.
-     *
-     * @param array<string, mixed> $resume
-     */
+
     private function cacheKey(array $resume, string $jobDescription): string
     {
         $fingerprint = hash('sha256', json_encode($resume) . '|' . $jobDescription);
@@ -275,9 +237,7 @@ class JobMatchAnalyzerService
         return "job_match_analysis:{$fingerprint}";
     }
 
-    /**
-     * @param array<string, mixed> $resume
-     */
+   
     private function assertHasContent(array $resume, string $jobDescription, string $requestId): void
     {
         $cvHasContent =
@@ -448,9 +408,7 @@ Grade mapping:
 PROMPT;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+   
     private function schema(): array
     {
         return [
@@ -599,13 +557,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * Reuses the same normalization contract as ATSAnalyzerService so both
-     * services accept identical parser output.
-     *
-     * @param array<string, mixed> $cv
-     * @return array<string, mixed>
-     */
     private function normalizeCv(array $cv): array
     {
         $candidate = $cv['candidateName'][0] ?? [];
@@ -679,10 +630,7 @@ PROMPT;
         ];
     }
 
-    /**
-     * @param array<int|string, mixed> $items
-     * @return array<int|string, mixed>
-     */
+    
     private function capList(array $items): array
     {
         array_walk_recursive($items, function (&$value): void {
@@ -701,10 +649,7 @@ PROMPT;
             : $value;
     }
 
-    /**
-     * @param array<string, mixed> $result
-     * @return array<string, mixed>
-     */
+   
     private function normalizeResult(array $result, string $requestId): array
     {
         $categories = $result['categories'] ?? [];
@@ -776,8 +721,7 @@ PROMPT;
         $recommendation = $result['recommendation'] ?? null;
 
         if (!in_array($recommendation, ['strong_match', 'possible_match', 'weak_match'], true)) {
-            // Derive from score if the model omitted/mangled it, rather
-            // than trusting an unvalidated enum straight through.
+           
             $recommendation = match (true) {
                 $score >= 80 => 'strong_match',
                 $score >= 55 => 'possible_match',
@@ -814,9 +758,6 @@ PROMPT;
         ];
     }
 
-    /**
-     * @param array<string, mixed> $response
-     */
     private function extractOutputText(array $response): string
     {
         if (isset($response['output_text']) && is_string($response['output_text'])) {
