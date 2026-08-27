@@ -14,70 +14,74 @@ class CoreCredentialsTableSeeder extends Seeder
     {
         $credentials = [
             [
-                'key'=> 'mail.default',
+                'key' => 'mail.default',
                 'value' => 'smtp',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.host',
-                'value' => 'smtp.hostinger.com',
+                'value' => '',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.username',
-                'value' => 'jobtap@techtrack.online',
+                'value' => '',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.password',
-                'value' => encrypt('Jobtap2025!@'), // Encrypt the password here
+                'value' => '',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => true
+                'is_encrypted' => true,
             ],
             [
                 'key' => 'mail.port',
                 'value' => '465',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.encryption',
                 'value' => 'ssl',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.from.address',
-                'value' => 'jobtap@techtrack.online',
+                'value' => '',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
+                'is_encrypted' => false,
             ],
             [
                 'key' => 'mail.from.name',
-                'value' => 'AiBackendTechTrack',
+                'value' => 'Admin',
                 'type' => 'string',
                 'group' => 'mail',
-                'is_encrypted' => false
-            ]
+                'is_encrypted' => false,
+            ],
         ];
 
         foreach ($credentials as $credential) {
             DB::table('core_credentials')->updateOrInsert(
-                ['key' => $credential['key']], // match by key
-                array_merge($credential, [
+                ['key' => $credential['key']],
+                [
+                    'value' => $credential['value'],
+                    'type' => $credential['type'],
+                    'group' => $credential['group'],
+                    'is_encrypted' => $credential['is_encrypted'],
                     'updated_at' => now(),
-                    'created_at' => now()
-                ])
+                    'created_at' => now(),
+                ]
             );
         }
     }
