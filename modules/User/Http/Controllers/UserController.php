@@ -121,14 +121,14 @@ public function store(Request $request)
     // Confirmation Email to User
     Mail::send([], [], function ($mail) use ($request) {
         $mail->to($request->email)
-             ->subject('Thank You for Contacting Cv Builder')
+             ->subject('Thank You for Contacting PathForge')
              ->html("
                 <h2>Thank You, {$request->name}!</h2>
                 <p>We have received your message.</p>
                 <p><strong>Subject:</strong> {$request->message}</p>
                 <p>Our team will get back to you as soon as possible.</p>
                 <br>
-                <p>Regards,<br>Cv Builder Team</p>
+                <p>Regards,<br>PathForge Team</p>
              ");
     });
 
